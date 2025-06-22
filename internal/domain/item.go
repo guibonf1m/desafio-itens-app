@@ -1,17 +1,15 @@
-package server
+package domain
 
-import (
-	"time"
-)
+import "time"
 
 type Item struct {
 	ID            int
 	Code          int
-	Title         string
+	Nome          string
 	Descricao     string
-	Preco         int
+	Preco         float64
 	Estoque       int
-	Status        string
-	Criado_em     time.Time
+	Status        int
+	Creado_em     time.Time
 	Atualizado_em time.Time
 }
