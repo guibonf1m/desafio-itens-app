@@ -1,22 +1,22 @@
 package handler
 
-import "time"
+import (
+	"desafio-itens-app/internal/domain"
+)
 
-type ItemRequest struct {
-	ID            int       `json:"id"`
-	Code          int       `json:"code"`
-	Nome          string    `json:"nome"`
-	Descricao     string    `json:"descricao"`
-	Preco         float64   `json:"preco"`
-	Estoque       int       `json:"estoque"`
-	Status        int       `json:"status"`
-	Creado_em     time.Time `json:"creado_em"`
-	Atualizado_em time.Time `json:"atualizado_em"`
+type CreateItemRequest struct {
+	Nome      string        `json:"nome"`
+	Descricao string        `json:"descricao"`
+	Preco     float64       `json:"preco"`
+	Estoque   int           `json:"estoque"`
+	Status    domain.Status `json:"status"`
 }
 type ItemResponse struct {
-	ID        int     `json:"id"`
-	Code      int     `json:"code"`
-	Nome      string  `json:"nome"`
-	Descricao string  `json:"descricao"`
-	Preco     float64 `json:"preco"`
+	ID        int           `json:"id"`
+	Code      int           `json:"code"`
+	Nome      string        `json:"nome"`
+	Descricao string        `json:"descricao"`
+	Preco     float64       `json:"preco"`
+	Estoque   int           `json:"estoque"`
+	Status    domain.Status `json:"status"`
 }
