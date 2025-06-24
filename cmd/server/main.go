@@ -1,17 +1,13 @@
-package server
+package main
 
 import (
-	"time"
+	"github.com/gin-gonic/gin"
 )
 
-type Item struct {
-	ID            int
-	Code          int
-	Title         string
-	Descricao     string
-	Preco         int
-	Estoque       int
-	Status        string
-	Criado_em     time.Time
-	Atualizado_em time.Time
+func main() {
+	r := gin.Default()
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "pong"})
+	})
+	r.Run()
 }

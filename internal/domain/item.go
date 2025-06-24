@@ -11,7 +11,7 @@ const (
 
 type Item struct {
 	ID            int
-	Code          int
+	Code          string
 	Nome          string
 	Descricao     string
 	Preco         float64

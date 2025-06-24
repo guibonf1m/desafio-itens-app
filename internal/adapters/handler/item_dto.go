@@ -13,7 +13,7 @@ type CreateItemRequest struct {
 }
 type ItemResponse struct {
 	ID        int           `json:"id"`
-	Code      int           `json:"code"`
+	Code      string        `json:"code"`
 	Nome      string        `json:"nome"`
 	Descricao string        `json:"descricao"`
 	Preco     float64       `json:"preco"`
