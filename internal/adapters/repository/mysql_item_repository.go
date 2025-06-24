@@ -29,3 +29,11 @@ func (r *MySQLItemRepository) AddItem(item domain.Item) (domain.Item, error) {
 	item.ID = int(id)
 	return item, nil
 }
+
+func (r *MySQLItemRepository) FinditemById(item domain.Item) (domain.Item, error) {
+
+}
+
+func (r *MySQLItemRepository) FindAllItens(item domain.Item) (domain.Item, error) {
+
+}

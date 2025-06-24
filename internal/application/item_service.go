@@ -51,18 +51,18 @@ func (s *ItemService) AddItem(item domain.Item) (domain.Item, error) {
 	return item, nil
 }
 
-//func (s *ItemService) GetItemByID(id int) (domain.Item, error) {
-//
+func (s *ItemService) GetItemByID(id int) (domain.Item, error) {
+
+}
+
+//func (s *ItemService) ListItens() ([]domain.Item, error) {
+
 //}
-//
-//func (s *ItemService) GetAllItens() ([]domain.Item, error) {
-//
-//}
-//
+
 //func (s *ItemService) UpdateItem(item domain.Item) error {
-//
+
 //}
-//
+
 //func (s *ItemService) DeleteItem(id int) error {
-//
+
 //}
