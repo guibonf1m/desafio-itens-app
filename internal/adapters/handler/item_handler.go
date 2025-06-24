@@ -11,13 +11,13 @@ import (
 )
 
 type ResponseInfo struct {
-	TotalPages int         `json:"totalPages"`
-	Data       interface{} `json:"data"`
-	Error      bool        `json:"error"`
-	Result     any         `json:"result"`
+	TotalPages int         `json:"totalPages,omitempty"`
+	Data       interface{} `json:"data,omitempty"`
+	Error      bool        `json:"error,omitempty"`
+	Result     any         `json:"result,omitempty"`
 }
 type ItemHandler struct {
-	service *application.ItemService
+	service application.ItemService
 }
 
 func NovoItemResponse(item domain.Item) ItemResponse {
@@ -64,34 +64,76 @@ func (h *ItemHandler) AddItem(c *gin.Context) {
 }
 
 func (h *ItemHandler) GetItem(c *gin.Context) {
-		idParam := c.Param("id")
+	idParam := c.Param("id")
 
-		id, err := strconv.Atoi(idParam)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, ResponseInfo{
-				Error:  true,
-				Result: "o parametro não é um número, tente novamente.",
-			})
-			return
-		}
-
-		item := h.service.GetItemByID(id)
-		if item.ID == 0 {
-			c.JSON(http.StatusNotFound, ResponseInfo{
-				Error:  true,
-				Result: "produto não existe, tente novamente.",
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, ResponseInfo{
-			TotalPages:  1,
-			Data: item,
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: "o parametro não é um número, tente novamente.",
 		})
+		return
 	}
+
+	item, err := h.service.GetItem(id)
+	if item.ID == 0 {
+		c.JSON(http.StatusNotFound, ResponseInfo{
+			Error:  true,
+			Result: "produto não existe, tente novamente.",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseInfo{
+		TotalPages: 1,
+		Data:       item,
+	})
+}
+
+func (h *ItemHandler) GetItens(c *gin.Context) {
+	// Captura os parâmetros de query 'page' e 'size', com valores padrão "1" e "10" se não forem fornecidos
+	pageStr := c.DefaultQuery("page", "1")
+	sizeStr := c.DefaultQuery("size", "10")
+
+	// Converte os parâmetros 'page' e 'size' de string para int
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: "Número da página inválido.",
+		})
+		return
+	}
+
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: "Tamanho da página inválido",
+		})
+		return
+	}
+
+	// Uso do serviço para listar os itens com paginação
+	items, err := h.service.GetItens(page, size)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ResponseInfo{
+			Error:  true,
+			Result: "Erro ao buscar itens",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseInfo{
+		TotalPages: 1,
+		Data:       items,
+	})
+}
+
+func (h *ItemHandler) UpdateItem(c *gin.Context) {
 
 }
 
-func (h *ItemHandler) GetAllItens(c *gin.Context) {
+func (h *ItemHandler) DeleteItem(c *gin.Context) {
 
 }
