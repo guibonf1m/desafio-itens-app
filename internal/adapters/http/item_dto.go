@@ -1,7 +1,7 @@
-package handler
+package http
 
 import (
-	"desafio-itens-app/internal/domain"
+	entity "desafio-itens-app/internal/domain/item"
 )
 
 type CreateItemRequest struct {
@@ -17,5 +17,5 @@ type ItemResponse struct {
 	Descricao string        `json:"descricao"`
 	Preco     float64       `json:"preco"`
 	Estoque   int           `json:"estoque"`
-	Status    domain.Status `json:"status"`
+	Status    entity.Status `json:"status"`
 }

@@ -1,12 +1,11 @@
-package repository
+package postgres
 
 import (
 	"database/sql"
+	entity "desafio-itens-app/internal/domain/item"
 	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
-
-	"desafio-itens-app/internal/domain"
 )
 
 type MySQLItemRepository struct {
@@ -17,23 +16,23 @@ func NewMySQLItemRepository(db *sqlx.DB) *MySQLItemRepository {
 	return &MySQLItemRepository{db: db}
 }
 
-func (r *MySQLItemRepository) AddItem(item domain.Item) (domain.Item, error) {
+func (r *MySQLItemRepository) AddItem(item entity.Item) (entity.Item, error) {
 	result, err := r.db.Exec("INSERT INTO itens (nome, preco, estoque, status) VALUES (?, ?, ?, ?)",
 		item.Nome, item.Preco, item.Estoque, item.Status)
 	if err != nil {
-		return domain.Item{}, err
+		return item.Item{}, err
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return domain.Item{}, err
+		return item.Item{}, err
 	}
 
 	item.ID = int(id)
 	return item, nil
 }
 
-func (r *MySQLItemRepository) GetItem(id int) (*domain.Item, error) {
+func (r *MySQLItemRepository) GetItem(id int) (*entity.Item, error) {
 
 	//Antes de qualquer operação, verificamos se o ID está vazio.
 	if id == 0 {
@@ -50,7 +49,7 @@ func (r *MySQLItemRepository) GetItem(id int) (*domain.Item, error) {
 	// O valor de 'id' substitui o '?' na consulta, garantindo que apenas o item específico seja retornado.
 	row := r.db.QueryRow(query, id)
 
-	var item domain.Item
+	var item entity.Item
 	err := row.Scan(&item.ID, &item.Code, &item.Nome, &item.Descricao)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -58,16 +57,16 @@ func (r *MySQLItemRepository) GetItem(id int) (*domain.Item, error) {
 		}
 		return nil, err
 	}
-	
+
 	return &item, nil
 }
 
-func (r *MySQLItemRepository) GetItens(item domain.Item) (domain.Item, error) {
-
-}
-func (r *MySQLItemRepository) UpdateItem(id int) (domain.Item, error) {
-
-}
-func (r *MySQLItemRepository) DeleteItem(id int) (domain.Item, error) {
-
-}
+//func (r *MySQLItemRepository) GetItens(item entity.Item) (entity.Item, error) {
+//
+//}
+//func (r *MySQLItemRepository) UpdateItem(id int) (entity.Item, error) {
+//
+//}
+//func (r *MySQLItemRepository) DeleteItem(id int) (entity.Item, error) {
+//
+//}

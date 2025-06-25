@@ -1,8 +1,8 @@
-package handler
+package http
 
 import (
 	"desafio-itens-app/internal/application"
-	"desafio-itens-app/internal/domain"
+	entity "desafio-itens-app/internal/domain/item"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -20,7 +20,7 @@ type ItemHandler struct {
 	service application.ItemService
 }
 
-func NovoItemResponse(item domain.Item) ItemResponse {
+func NovoItemResponse(item entity.Item) ItemResponse {
 
 	respostaItem := ItemResponse{
 		ID:        item.ID,
@@ -35,7 +35,7 @@ func NovoItemResponse(item domain.Item) ItemResponse {
 }
 
 func (h *ItemHandler) AddItem(c *gin.Context) {
-	var item domain.Item
+	var item entity.Item
 
 	err := json.NewDecoder(c.Request.Body).Decode(&item)
 	if err != nil {

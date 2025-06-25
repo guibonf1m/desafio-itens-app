@@ -1,4 +1,4 @@
-package domain
+package item
 
 type ItemRepository interface {
 	GetItem(id int) (*Item, error)
