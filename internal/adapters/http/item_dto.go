@@ -19,3 +19,24 @@ type ItemResponse struct {
 	Estoque   int           `json:"estoque"`
 	Status    entity.Status `json:"status"`
 }
+
+func (r *CreateItemRequest) ToEntity() entity.Item {
+	return entity.Item{
+		Nome:      r.Nome,
+		Descricao: r.Descricao,
+		Preco:     r.Preco,
+		Estoque:   r.Estoque,
+	}
+}
+
+func FromEntity(item entity.Item) ItemResponse {
+	return ItemResponse{
+		ID:        item.ID,
+		Code:      item.Code,
+		Nome:      item.Nome,
+		Descricao: item.Descricao,
+		Preco:     item.Preco,
+		Estoque:   item.Estoque,
+		Status:    item.Status,
+	}
+}

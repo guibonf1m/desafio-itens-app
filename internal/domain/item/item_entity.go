@@ -5,8 +5,8 @@ import "time"
 type Status string
 
 const (
-	StatusAtivo   Status = "ativo"
-	StatusInativo Status = "inativo"
+	StatusAtivo   Status = "active"
+	StatusInativo Status = "inactive"
 )
 
 type Item struct {
@@ -17,6 +17,6 @@ type Item struct {
 	Preco         float64
 	Estoque       int
 	Status        Status
-	Creado_em     time.Time
-	Atualizado_em time.Time
+	Creado_em     *time.Time `db:"created_at"`
+	Atualizado_em *time.Time `db:"updated_at"`
 }

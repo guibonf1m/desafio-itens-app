@@ -2,26 +2,34 @@ package main
 
 import (
 	"desafio-itens-app/internal/adapters/http"
-	"github.com/gin-gonic/gin"
-	"github.com/jmoiron/sqlx"
-	"net/http"
+	"desafio-itens-app/internal/adapters/mysql" // <- Aqui está sua função Conectar
+	"desafio-itens-app/internal/application"
+
+	"log"
 )
 
 func main() {
-	r := gin.Default()
+	// 1. Conectar ao banco MySQL
+	db, err := mysql.Conectar()
+	if err != nil {
+		log.Fatal("Erro ao conectar com o banco:", err)
+	}
+	defer db.Close()
 
-	db, err := sqlx.Open()
+	// 2. Criar o repositório
+	repo := mysql.NewMySQLItemRepository(db)
 
-	r.GET("", index)
-	r.POST("/itens/:categoria", http.ItemHandler.AddItem)
-	r.GET("/item/:id", http.ItemHandler.GetItem)
-	r.GET("/itens", http.ItemHandler.GetAllItens)
-	r.PUT("/item/:id", http.ItemHandler.UpdateItem)
-	r.DELETE("/item/:id", http.ItemHandler.DeleteItem)
+	// 3. Criar o service
+	service := application.NewItemService(repo)
 
-	r.Run(":8080")
+	// 4. Criar o handler
+	handler := http.NewItemHandler(service)
 
-}
-func index(c *gin.Context) {
-	c.JSON(http.StatusOK, "Bem vindo a minha segunda API!")
+	// 5. Registrar as rotas
+	router := RegistrarRotas(handler)
+
+	// 6. Subir o servidor
+	if err := router.Run(":8080"); err != nil {
+		log.Fatal("Erro ao subir o servidor:", err)
+	}
 }
