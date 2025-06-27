@@ -100,6 +100,7 @@ func (h *ItemHandler) GetItem(c *gin.Context) {
 	})
 }
 
+//
 //func (h *ItemHandler) GetItens(c *gin.Context) {
 //	// Captura os parâmetros de query 'page' e 'size', com valores padrão "1" e "10" se não forem fornecidos
 //	pageStr := c.DefaultQuery("page", "1")
@@ -140,10 +141,64 @@ func (h *ItemHandler) GetItem(c *gin.Context) {
 //	})
 //}
 
-//func (h *ItemHandler) UpdateItem(c *gin.Context) {
+func (h *ItemHandler) UpdateItem(c *gin.Context) {
+
+	idParam := c.Param("id")
+	var item entity.Item
+
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
+
+	err = json.NewDecoder(c.Request.Body).Decode(&item)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
+
+	item.ID = id
+	produtoAtualizado, err := h.service.UpdateItem(item)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
+//
+//	produtoResponse := h.service.NovoProdutoResponse(produtoAtualizado)
+//	c.JSON(http.StatusOK, ResponseInfo{
+//		Error:  false,
+//		Result: produtoResponse,
+//	})
 //
 //}
-//
+
 //func (h *ItemHandler) DeleteItem(c *gin.Context) {
 //
-//}
+//		idParam := c.Param("id")
+//
+//		id, err := strconv.Atoi(idParam)
+//		if err != nil {
+//			c.JSON(http.StatusBadRequest, ResponseInfo{
+//				Error:  true,
+//				Result: err.Error(),
+//			})
+//			return
+//		}
+//
+//		h.service.DeleteProduto(id)
+//
+//		c.JSON(http.StatusOK, ResponseInfo{
+//			Error:  false,
+//			Result: "deletado com sucesso",
+//		})
+//	}

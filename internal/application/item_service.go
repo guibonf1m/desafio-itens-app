@@ -69,14 +69,41 @@ func (s *itemService) GetItem(id int) (*entity.Item, error) {
 	return item, nil
 }
 
-//func (s *itemService) GetItens() ([]entity.Item, error) {
+// func (s *itemService) GetItens() ([]entity.Item, error) {
 //
-//}
-//
-//func (s *itemService) UpdateItem(item entity.Item) error {
-//
-//}
-//
+// }
+func (s *itemService) UpdateItem(item entity.Item) (entity.Item, error) {
+
+	itemExistente, err := s.repo.GetItem(item.ID)
+
+	if err != nil {
+		return entity.Item{}, fmt.Errorf("Erro ao buscar o item: %w", err)
+	}
+
+	if itemExistente == nil {
+		return entity.Item{}, errors.New("Item não encontrado para atualização.")
+	}
+
+	if item.Preco <= 0 {
+		return entity.Item{}, errors.New("O produto tem preço inválido.")
+	}
+
+	if item.Estoque < 0 {
+		return entity.Item{}, errors.New("O produto tem estoque inválido.")
+	}
+
+	if item.Estoque == 0 {
+		item.Status = entity.StatusInativo
+	} else {
+		item.Status = entity.StatusAtivo
+	}
+
+	if err := s.repo.UpdateItem(item); err != nil {
+		return entity.Item{}, err
+	}
+	return item, nil
+}
+
 //func (s *itemService) DeleteItem(id int) error {
 //
 //}

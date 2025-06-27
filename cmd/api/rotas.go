@@ -8,10 +8,13 @@ import (
 func RegistrarRotas(handler *http.ItemHandler) *gin.Engine {
 	router := gin.Default()
 
-	itens := router.Group("/itens")
+	itens := router.Group("v1/itens")
 	{
 		itens.POST("", handler.AddItem)
 		itens.GET("/:id", handler.GetItem)
+		itens.GET("", handler.GetItens)
+		itens.PUT("/:id", handler.UpdateItem)
+		itens.DELETE("/:id", handler.DeleteItem)
 	}
 
 	return router

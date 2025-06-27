@@ -14,17 +14,21 @@ type MySQLItemRepository struct {
 	db *sqlx.DB
 }
 
-func NewMySQLItemRepository(db *sqlx.DB) *MySQLItemRepository {
-	return &MySQLItemRepository{db: db}
-}
-
 func Conectar() (*sqlx.DB, error) {
-	db, err := sqlx.Open("mysql", "root:root@tcp(localhost:3306)/desafio_itens")
+	db, err := sqlx.Open("mysql", "root:root@tcp(localhost:3306)/desafio_itens?parseTime=true")
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
+
+func NewMySQLItemRepository(db *sqlx.DB) *MySQLItemRepository {
+	//Cria uma nova struct preenchida e devolve o endereço (ponteiro) dessa struct.
+	//Retorna o repositório prontinho para ser usado
+	return &MySQLItemRepository{db: db}
+
+}
+
 func (r *MySQLItemRepository) AddItem(item entity.Item) (entity.Item, error) {
 	result, err := r.db.Exec("INSERT INTO itens (code, nome, preco, descricao, estoque, status) VALUES (?, ?, ?, ?, ?, ?)",
 		item.Code, item.Nome, item.Preco, item.Descricao, item.Estoque, item.Status)
@@ -72,11 +76,13 @@ func (r *MySQLItemRepository) GetItem(id int) (*entity.Item, error) {
 }
 
 //func (r *MySQLItemRepository) GetItens(item entity.Item) (entity.Item, error) {
-//
+
 //}
-//func (r *MySQLItemRepository) UpdateItem(id int) (entity.Item, error) {
-//
-//}
+
+func (r *MySQLItemRepository) UpdateItem(id int) (entity.Item, error) {
+
+}
+
 //func (r *MySQLItemRepository) DeleteItem(id int) (entity.Item, error) {
-//
+
 //}
