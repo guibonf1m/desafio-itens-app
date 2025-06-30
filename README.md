@@ -68,9 +68,3 @@ O **Desafio Itens App** é uma API REST desenvolvida em Go com o framework Gin, 
 ## Contribuição
 
 Contribuições são bem-vindas! Se você deseja contribuir, por favor, faça um fork do repositório e envie um pull request.
-
----
-
-## Licença
-
-O Desafio Itens App é licenciado sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.f1m/desafio-itens-app.git
