@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ResponseInfo struct {
+	TotalItens int         `json:"totalItens,omitempty"`
 	TotalPages int         `json:"totalPages,omitempty"`
 	Data       interface{} `json:"data,omitempty"`
 	Error      bool        `json:"error,omitempty"`
@@ -26,23 +28,8 @@ func NewItemHandler(service application.ItemService) *ItemHandler {
 	}
 }
 
-func NovoItemResponse(item entity.Item) ItemResponse {
-
-	respostaItem := ItemResponse{
-		ID:        item.ID,
-		Code:      item.Code,
-		Nome:      item.Nome,
-		Descricao: item.Descricao,
-		Preco:     item.Preco,
-		Estoque:   item.Estoque,
-		Status:    item.Status,
-	}
-	return respostaItem
-}
-
 func (h *ItemHandler) AddItem(c *gin.Context) {
 
-	//declarandoDTO -> Instância da struct que representa os dados do cliente
 	var req CreateItemRequest
 
 	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
@@ -65,7 +52,7 @@ func (h *ItemHandler) AddItem(c *gin.Context) {
 		return
 	}
 
-	itemResponse := NovoItemResponse(itemCriado)
+	itemResponse := FromEntity(itemCriado)
 
 	c.JSON(http.StatusCreated, ResponseInfo{
 		TotalPages: 1,
@@ -100,54 +87,53 @@ func (h *ItemHandler) GetItem(c *gin.Context) {
 	})
 }
 
-//
-//func (h *ItemHandler) GetItens(c *gin.Context) {
-//	// Captura os parâmetros de query 'page' e 'size', com valores padrão "1" e "10" se não forem fornecidos
-//	pageStr := c.DefaultQuery("page", "1")
-//	sizeStr := c.DefaultQuery("size", "10")
-//
-//	// Converte os parâmetros 'page' e 'size' de string para int
-//	page, err := strconv.Atoi(pageStr)
-//	if err != nil {
-//		c.JSON(http.StatusBadRequest, ResponseInfo{
-//			Error:  true,
-//			Result: "Número da página inválido.",
-//		})
-//		return
-//	}
-//
-//	size, err := strconv.Atoi(sizeStr)
-//	if err != nil {
-//		c.JSON(http.StatusBadRequest, ResponseInfo{
-//			Error:  true,
-//			Result: "Tamanho da página inválido",
-//		})
-//		return
-//	}
-//
-//	// Uso do serviço para listar os itens com paginação
-//	items, err := h.service.GetItens(page, size)
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, ResponseInfo{
-//			Error:  true,
-//			Result: "Erro ao buscar itens",
-//		})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, ResponseInfo{
-//		TotalPages: 1,
-//		Data:       items,
-//	})
-//}
+func (h *ItemHandler) GetItens(c *gin.Context) {
+	// lê query params…
+	statusParam := c.Query("status")
+	limitParam := c.Query("limit")
+
+	var status *entity.Status
+	if statusParam != "" {
+		s := entity.Status(statusParam)
+		status = &s
+	}
+
+	limit := 10
+	if l, err := strconv.Atoi(limitParam); err == nil {
+		limit = l
+	}
+
+	// **chamada UNIFICADA** que retorna 4 valores
+	itens, totalItens, totalPages, err := h.service.GetItensFiltrados(status, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
+
+	// mapeia e devolve
+	resp := make([]ItemResponse, 0, len(itens))
+	for _, it := range itens {
+		resp = append(resp, FromEntity(it))
+	}
+
+	c.JSON(http.StatusOK, ResponseInfo{
+		TotalItens: totalItens,
+		TotalPages: totalPages,
+		Data:       resp,
+		Error:      false,
+	})
+}
 
 func (h *ItemHandler) UpdateItem(c *gin.Context) {
 
+	// Extrai o ID da URL
 	idParam := c.Param("id")
-	var item entity.Item
 
 	id, err := strconv.Atoi(idParam)
-	if err != nil {
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
@@ -155,8 +141,9 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	err = json.NewDecoder(c.Request.Body).Decode(&item)
-	if err != nil {
+	// Decodifica o corpo - Body JSON
+	var req UpdateItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
@@ -164,41 +151,58 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	item.ID = id
-	produtoAtualizado, err := h.service.UpdateItem(item)
-	if err != nil {
+	//Monta a entidade
+	itemToUpdate := req.ToEntity(id)
+
+	// Chama Service
+	if err := h.service.UpdateItem(itemToUpdate); err != nil {
+		msg := err.Error()
+
+		switch {
+		case strings.Contains(msg, "não encontrado"):
+			c.JSON(404, ResponseInfo{Error: true, Result: msg})
+		case strings.Contains(msg, "inválido"):
+			c.JSON(400, ResponseInfo{Error: true, Result: msg})
+		default:
+			c.JSON(500, ResponseInfo{Error: true, Result: "Erro interno: " + msg})
+		}
+		return
+	}
+
+	//Sucesso
+	c.JSON(http.StatusOK, ResponseInfo{
+		TotalPages: 1,
+		Error:      false,
+		Result:     "Item atualizado com sucesso!",
+	})
+
+}
+
+func (h *ItemHandler) DeleteItem(c *gin.Context) {
+
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
-			Result: err.Error(),
+			Result: "ID inválido",
 		})
 		return
 	}
-//
-//	produtoResponse := h.service.NovoProdutoResponse(produtoAtualizado)
-//	c.JSON(http.StatusOK, ResponseInfo{
-//		Error:  false,
-//		Result: produtoResponse,
-//	})
-//
-//}
 
-//func (h *ItemHandler) DeleteItem(c *gin.Context) {
-//
-//		idParam := c.Param("id")
-//
-//		id, err := strconv.Atoi(idParam)
-//		if err != nil {
-//			c.JSON(http.StatusBadRequest, ResponseInfo{
-//				Error:  true,
-//				Result: err.Error(),
-//			})
-//			return
-//		}
-//
-//		h.service.DeleteProduto(id)
-//
-//		c.JSON(http.StatusOK, ResponseInfo{
-//			Error:  false,
-//			Result: "deletado com sucesso",
-//		})
-//	}
+	if err := h.service.DeleteItem(id); err != nil {
+		msg := err.Error()
+		switch {
+		case strings.Contains(msg, "Nenhum item encontrado"):
+			c.JSON(http.StatusNotFound, ResponseInfo{
+				Error:  true,
+				Result: msg,
+			})
+		default:
+			c.JSON(http.StatusOK, ResponseInfo{
+				Error:  false,
+				Result: "Item deletado com sucesso!",
+			})
+		}
+	}
+}

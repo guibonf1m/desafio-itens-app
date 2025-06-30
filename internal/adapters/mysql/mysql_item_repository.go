@@ -5,9 +5,8 @@ import (
 	entity "desafio-itens-app/internal/domain/item"
 	"errors"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 type MySQLItemRepository struct {
@@ -75,14 +74,108 @@ func (r *MySQLItemRepository) GetItem(id int) (*entity.Item, error) {
 	return &item, nil
 }
 
-//func (r *MySQLItemRepository) GetItens(item entity.Item) (entity.Item, error) {
+func (r *MySQLItemRepository) GetItens() ([]entity.Item, error) {
 
-//}
+	var itens []entity.Item
 
-func (r *MySQLItemRepository) UpdateItem(id int) (entity.Item, error) {
+	const query = "  SELECT \n id, code, nome, descricao, preco, estoque, status,\n    " +
+		"created_at AS created_at, updated_at AS updated_at\n  FROM itens"
 
+	err := r.db.Select(&itens, query)
+
+	if err != nil {
+		return nil, err
+	}
+	return itens, nil
 }
 
-//func (r *MySQLItemRepository) DeleteItem(id int) (entity.Item, error) {
+func (r *MySQLItemRepository) GetItensFiltrados(status *entity.Status, limit int) ([]entity.Item, error) {
+	var (
+		query = `SELECT id, code, nome, descricao, preco, estoque, status, created_at, updated_at FROM itens`
+		args  []interface{}
+	)
 
-//}
+	if status != nil {
+		query += " WHERE status = ?"
+		args = append(args, *status)
+	}
+	query += " ORDER BY updated_at DESC LIMIT ?"
+	args = append(args, limit)
+
+	var itens []entity.Item
+	if err := r.db.Select(&itens, query, args...); err != nil {
+		return nil, err
+	}
+	return itens, nil
+}
+
+func (r *MySQLItemRepository) CountItens(status *entity.Status) (int, error) {
+	var query string
+	var args []interface{}
+
+	if status != nil {
+		query = "SELECT COUNT(*) FROM itens WHERE status = ?"
+		args = append(args, *status)
+	} else {
+		query = "SELECT COUNT(*) FROM itens"
+	}
+
+	var total int
+	if err := r.db.Get(&total, query, args...); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (r *MySQLItemRepository) UpdateItem(item entity.Item) error {
+
+	query := "UPDATE itens SET nome = ?, descricao = ?, preco = ?, estoque = ?, status = ?  WHERE id = ?"
+
+	result, err := r.db.Exec(
+		query,
+		item.Nome,
+		item.Descricao,
+		item.Preco,
+		item.Estoque,
+		item.Status,
+		item.ID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	//RowsAffected(): consulta no result quantas linhas efetivamente mudaram de valor.
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	//Se rows == 0, significa que nenhum registro com aquele id foi encontrado (e, portanto, nada foi atualizado).
+	if rows == 0 {
+		return fmt.Errorf("nenhum item encontrado com id %d", item.ID)
+	}
+
+	return nil
+}
+
+func (r *MySQLItemRepository) DeleteItem(id int) error {
+
+	result, err := r.db.Exec("DELETE FROM itens WHERE id = ?", id)
+
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("Nenhum item encontrado para o id %d", id)
+	}
+
+	return nil
+
+}

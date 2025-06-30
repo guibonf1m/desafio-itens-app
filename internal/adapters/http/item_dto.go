@@ -2,6 +2,7 @@ package http
 
 import (
 	entity "desafio-itens-app/internal/domain/item"
+	"time"
 )
 
 type CreateItemRequest struct {
@@ -18,6 +19,13 @@ type ItemResponse struct {
 	Preco     float64       `json:"preco"`
 	Estoque   int           `json:"estoque"`
 	Status    entity.Status `json:"status"`
+	CreatedAt *time.Time    `json:"created_at"`
+	UpdatedAt *time.Time    `json:"updated_at"`
+}
+
+type UpdateItemRequest struct {
+	Preco   float64 `json:"preco"`
+	Estoque int     `json:"estoque"`
 }
 
 func (r *CreateItemRequest) ToEntity() entity.Item {
@@ -38,5 +46,15 @@ func FromEntity(item entity.Item) ItemResponse {
 		Preco:     item.Preco,
 		Estoque:   item.Estoque,
 		Status:    item.Status,
+		CreatedAt: item.Creado_em,
+		UpdatedAt: item.Atualizado_em,
+	}
+}
+
+func (r *UpdateItemRequest) ToEntity(id int) entity.Item {
+	return entity.Item{
+		ID:      id,
+		Preco:   r.Preco,
+		Estoque: r.Estoque,
 	}
 }
