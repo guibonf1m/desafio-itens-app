@@ -1,1 +1,22 @@
+# Binários do Go
+/bin/
+
+# Dependências vendorizadas
+/vendor/
+
+# Executáveis e logs
+*.exe
+*.log
+
+# IDEs
 .idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Docker Compose local override
+docker-compose.override.yml
+
+# Arquivos de ambiente
+*.env
