@@ -99,7 +99,8 @@ func (r *MySQLItemRepository) GetItensFiltrados(status *entity.Status, limit int
 		query += " WHERE status = ?"
 		args = append(args, *status)
 	}
-	query += " ORDER BY updated_at DESC LIMIT ?"
+	query += " ORDER BY updated_at " +
+		"DESC LIMIT ?"
 	args = append(args, limit)
 
 	var itens []entity.Item
