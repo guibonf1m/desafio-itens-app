@@ -129,7 +129,6 @@ func (h *ItemHandler) GetItens(c *gin.Context) {
 
 func (h *ItemHandler) UpdateItem(c *gin.Context) {
 
-	// Extrai o ID da URL
 	idParam := c.Param("id")
 
 	id, err := strconv.Atoi(idParam)
@@ -141,7 +140,6 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	// Decodifica o corpo - Body JSON
 	var req UpdateItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
@@ -151,10 +149,8 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	//Monta a entidade
 	itemToUpdate := req.ToEntity(id)
 
-	// Chama Service
 	if err := h.service.UpdateItem(itemToUpdate); err != nil {
 		msg := err.Error()
 
@@ -169,7 +165,6 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	//Sucesso
 	c.JSON(http.StatusOK, ResponseInfo{
 		TotalPages: 1,
 		Error:      false,

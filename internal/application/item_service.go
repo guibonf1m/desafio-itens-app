@@ -82,7 +82,7 @@ func (s *itemService) GetItens() ([]entity.Item, error) {
 }
 
 func (s *itemService) GetItensFiltrados(status *entity.Status, limit int) (itens []entity.Item, totalItens int, totalPages int, err error) {
-	// normaliza o limit
+
 	if limit <= 0 {
 		limit = 10
 	}
@@ -91,21 +91,18 @@ func (s *itemService) GetItensFiltrados(status *entity.Status, limit int) (itens
 		limit = 20
 	}
 
-	// 1) conta quantos itens
 	totalItens, err = s.repo.CountItens(status)
 	if err != nil {
 		err = fmt.Errorf("erro ao contar itens: %w", err)
 		return
 	}
 
-	// 2) busca os itens
 	itens, err = s.repo.GetItensFiltrados(status, limit)
 	if err != nil {
 		err = fmt.Errorf("erro ao buscar itens: %w", err)
 		return
 	}
 
-	// 3) calcula totalPages
 	totalPages = int(math.Ceil(float64(totalItens) / float64(limit)))
 	return
 }

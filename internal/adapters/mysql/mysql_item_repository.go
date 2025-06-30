@@ -46,19 +46,12 @@ func (r *MySQLItemRepository) AddItem(item entity.Item) (entity.Item, error) {
 
 func (r *MySQLItemRepository) GetItem(id int) (*entity.Item, error) {
 
-	//Antes de qualquer operação, verificamos se o ID está vazio.
 	if id == 0 {
 		return nil, errors.New("Id não pode ser 0.")
 	}
 
-	// Esta consulta SQL busca um item pelo seu ID.
-	// O '?' é um espaço reservado para o ID do item, ajudando a prevenir ataques de injeção SQL
-	// e permitindo que o valor seja passado de forma segura.
-	// Ela seleciona as colunas 'id', 'code', 'name' e 'description' da tabela 'items'.
 	query := "SELECT * FROM itens WHERE id = ?"
 
-	// Executa a consulta preparada, passando o 'id' real.
-	// O valor de 'id' substitui o '?' na consulta, garantindo que apenas o item específico seja retornado.
 	row := r.db.QueryRow(query, id)
 
 	var item entity.Item
@@ -146,13 +139,11 @@ func (r *MySQLItemRepository) UpdateItem(item entity.Item) error {
 		return err
 	}
 
-	//RowsAffected(): consulta no result quantas linhas efetivamente mudaram de valor.
 	rows, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
 
-	//Se rows == 0, significa que nenhum registro com aquele id foi encontrado (e, portanto, nada foi atualizado).
 	if rows == 0 {
 		return fmt.Errorf("nenhum item encontrado com id %d", item.ID)
 	}
