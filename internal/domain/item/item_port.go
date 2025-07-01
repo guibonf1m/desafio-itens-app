@@ -5,6 +5,7 @@ type ItemRepository interface {
 	GetItens() ([]Item, error)
 	GetItensFiltrados(status *Status, limit int) ([]Item, error)
 	CountItens(status *Status) (int, error)
+	CodeExists(code string) (bool, error)
 	AddItem(item Item) (Item, error)
 	UpdateItem(item Item) error
 	DeleteItem(id int) error

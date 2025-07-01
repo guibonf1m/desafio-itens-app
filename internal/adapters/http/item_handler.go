@@ -1,70 +1,87 @@
 package http
 
 import (
-	"desafio-itens-app/internal/application"
-	entity "desafio-itens-app/internal/domain/item"
-	"encoding/json"
-	"net/http"
-	"strconv"
-	"strings"
-
-	"github.com/gin-gonic/gin"
+	"desafio-itens-app/internal/application"        // Service layer
+	entity "desafio-itens-app/internal/domain/item" // Domain entities
+	"encoding/json"                                 // JSON parsing
+	"github.com/gin-gonic/gin"                      // HTTP framework
+	"net/http"                                      // HTTP status codes
+	"strconv"                                       // String conversions
+	"strings"                                       // String manipulation
 )
 
-type ResponseInfo struct {
+type ResponseInfo struct { // Padronização de resposta HTTP
 	TotalItens int         `json:"totalItens,omitempty"`
 	TotalPages int         `json:"totalPages,omitempty"`
 	Data       interface{} `json:"data,omitempty"`
 	Error      bool        `json:"error,omitempty"`
 	Result     any         `json:"result,omitempty"`
 }
-type ItemHandler struct {
-	service application.ItemService
+type PageInfo struct {
+	Page       int `json:"pagina"`
+	PageSize   int `json:"tamanhoPagina"`
+	TotalItems int `json:"totalItens"`
+	TotalPages int `json:"totalPaginas"`
 }
 
-func NewItemHandler(service application.ItemService) *ItemHandler {
-	return &ItemHandler{
-		service: service,
-	}
+type ItemHandler struct { // Handler para operações de Item
+	service application.ItemService // Dependência: service layer
+}
+
+func NewItemHandler(service application.ItemService) *ItemHandler { // Factory function
+	return &ItemHandler{service: service} // Injeta dependência
 }
 
 func (h *ItemHandler) AddItem(c *gin.Context) {
+	var req CreateItemRequest // DTO para request
 
-	var req CreateItemRequest
-
-	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
-
-		c.JSON(http.StatusBadRequest, ResponseInfo{
+	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil { // 🔄 TRANSFORMATION: JSON → struct
+		c.JSON(http.StatusBadRequest, ResponseInfo{ // 🛡️ VALIDATION GUARD
 			Error:  true,
 			Result: "Erro ao decodificar JSON",
 		})
 		return
 	}
 
-	item := req.ToEntity()
+	item := req.ToEntity() // 🔄 TRANSFORMATION: DTO → Entity
 
-	itemCriado, err := h.service.AddItem(item)
+	itemCriado, err := h.service.AddItem(item) // 🌐 EXTERNAL CALL
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ResponseInfo{
-			Error:  true,
-			Result: err.Error(),
-		})
+		msg := err.Error()
+
+		switch { // ⚙️ BUSINESS RULE: mapeia erro → status HTTP
+		case strings.Contains(msg, "já existe"): // 409 - Recurso duplicado
+			c.JSON(http.StatusConflict, ResponseInfo{
+				Error:  true,
+				Result: msg,
+			})
+		case strings.Contains(msg, "inválido"): // 400 - Dados inválidos
+			c.JSON(http.StatusBadRequest, ResponseInfo{
+				Error:  true,
+				Result: msg,
+			})
+		default: // 500 - Erro interno
+			c.JSON(http.StatusInternalServerError, ResponseInfo{
+				Error:  true,
+				Result: "Erro interno: " + msg,
+			})
+		}
 		return
 	}
 
-	itemResponse := FromEntity(itemCriado)
+	itemResponse := FromEntity(itemCriado) // 🔄 TRANSFORMATION: Entity → DTO
 
-	c.JSON(http.StatusCreated, ResponseInfo{
+	c.JSON(http.StatusCreated, ResponseInfo{ // 201 - Recurso criado
 		TotalPages: 1,
 		Data:       []ItemResponse{itemResponse},
 	})
 }
 
 func (h *ItemHandler) GetItem(c *gin.Context) {
-	idParam := c.Param("id")
+	idParam := c.Param("id") // Extrai parâmetro da URL
 
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
+	id, err := strconv.Atoi(idParam) // 🔄 TRANSFORMATION: string → int
+	if err != nil {                  // 🛡️ VALIDATION GUARD
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: "o parametro não é um número, tente novamente.",
@@ -72,8 +89,8 @@ func (h *ItemHandler) GetItem(c *gin.Context) {
 		return
 	}
 
-	item, err := h.service.GetItem(id)
-	if item == nil || item.ID == 0 {
+	item, err := h.service.GetItem(id) // 🌐 EXTERNAL CALL: busca no service
+	if item == nil || item.ID == 0 {   // ⚙️ BUSINESS RULE: verifica se encontrou
 		c.JSON(http.StatusNotFound, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
@@ -81,31 +98,29 @@ func (h *ItemHandler) GetItem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ResponseInfo{
+	c.JSON(http.StatusOK, ResponseInfo{ // Retorna item encontrado
 		TotalPages: 1,
 		Data:       item,
 	})
 }
 
 func (h *ItemHandler) GetItens(c *gin.Context) {
-	// lê query params…
-	statusParam := c.Query("status")
-	limitParam := c.Query("limit")
+	statusParam := c.Query("status") // Query parameter opcional
+	limitParam := c.Query("limit")   // Query parameter opcional
 
-	var status *entity.Status
-	if statusParam != "" {
-		s := entity.Status(statusParam)
+	var status *entity.Status // Ponteiro para permitir nil
+	if statusParam != "" {    // ⚙️ BUSINESS RULE: filtro condicional
+		s := entity.Status(statusParam) // 🔄 TRANSFORMATION: string → Status
 		status = &s
 	}
 
-	limit := 10
-	if l, err := strconv.Atoi(limitParam); err == nil {
+	limit := 10                                         // Default limit
+	if l, err := strconv.Atoi(limitParam); err == nil { // 🔄 TRANSFORMATION: string → int
 		limit = l
 	}
 
-	// **chamada UNIFICADA** que retorna 4 valores
-	itens, totalItens, totalPages, err := h.service.GetItensFiltrados(status, limit)
-	if err != nil {
+	itens, totalItens, totalPages, err := h.service.GetItensFiltrados(status, limit) // 🌐 EXTERNAL CALL
+	if err != nil {                                                                  // 🛡️ VALIDATION GUARD
 		c.JSON(http.StatusInternalServerError, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
@@ -113,13 +128,12 @@ func (h *ItemHandler) GetItens(c *gin.Context) {
 		return
 	}
 
-	// mapeia e devolve
-	resp := make([]ItemResponse, 0, len(itens))
+	resp := make([]ItemResponse, 0, len(itens)) // Pre-aloca slice para performance
 	for _, it := range itens {
-		resp = append(resp, FromEntity(it))
+		resp = append(resp, FromEntity(it)) // 🔄 TRANSFORMATION: Entity → DTO
 	}
 
-	c.JSON(http.StatusOK, ResponseInfo{
+	c.JSON(http.StatusOK, ResponseInfo{ // Resposta com paginação
 		TotalItens: totalItens,
 		TotalPages: totalPages,
 		Data:       resp,
@@ -128,11 +142,10 @@ func (h *ItemHandler) GetItens(c *gin.Context) {
 }
 
 func (h *ItemHandler) UpdateItem(c *gin.Context) {
+	idParam := c.Param("id") // Parâmetro da URL
 
-	idParam := c.Param("id")
-
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
+	id, err := strconv.Atoi(idParam) // 🔄 TRANSFORMATION: string → int
+	if err != nil || id <= 0 {       // 🛡️ VALIDATION GUARD: ID válido
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
@@ -140,21 +153,21 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	var req UpdateItemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ResponseInfo{
+	var req UpdateItemRequest                      // DTO para update
+	if err := c.ShouldBindJSON(&req); err != nil { // 🔄 TRANSFORMATION: JSON → struct
+		c.JSON(http.StatusBadRequest, ResponseInfo{ // 🛡️ VALIDATION GUARD
 			Error:  true,
 			Result: err.Error(),
 		})
 		return
 	}
 
-	itemToUpdate := req.ToEntity(id)
+	itemToUpdate := req.ToEntity(id) // 🔄 TRANSFORMATION: DTO → Entity
 
-	if err := h.service.UpdateItem(itemToUpdate); err != nil {
+	if err := h.service.UpdateItem(itemToUpdate); err != nil { // 🌐 EXTERNAL CALL
 		msg := err.Error()
 
-		switch {
+		switch { // ⚙️ BUSINESS RULE: mapeia erros para HTTP status
 		case strings.Contains(msg, "não encontrado"):
 			c.JSON(404, ResponseInfo{Error: true, Result: msg})
 		case strings.Contains(msg, "inválido"):
@@ -165,19 +178,17 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ResponseInfo{
+	c.JSON(http.StatusOK, ResponseInfo{ // Sucesso
 		TotalPages: 1,
 		Error:      false,
 		Result:     "Item atualizado com sucesso!",
 	})
-
 }
 
 func (h *ItemHandler) DeleteItem(c *gin.Context) {
-
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
+	idParam := c.Param("id")         // Parâmetro da URL
+	id, err := strconv.Atoi(idParam) // 🔄 TRANSFORMATION: string → int
+	if err != nil || id <= 0 {       // 🛡️ VALIDATION GUARD
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: "ID inválido",
@@ -185,15 +196,15 @@ func (h *ItemHandler) DeleteItem(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteItem(id); err != nil {
+	if err := h.service.DeleteItem(id); err != nil { // 🌐 EXTERNAL CALL
 		msg := err.Error()
-		switch {
+		switch { // ⚙️ BUSINESS RULE: mapeia erros
 		case strings.Contains(msg, "Nenhum item encontrado"):
 			c.JSON(http.StatusNotFound, ResponseInfo{
 				Error:  true,
 				Result: msg,
 			})
-		default:
+		default: // ❌ BUG: sempre retorna sucesso
 			c.JSON(http.StatusOK, ResponseInfo{
 				Error:  false,
 				Result: "Item deletado com sucesso!",
