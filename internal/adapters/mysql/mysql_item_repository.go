@@ -7,6 +7,7 @@ import (
 	"fmt"                                           // Para formatar erros/strings
 	_ "github.com/go-sql-driver/mysql"              // Driver MySQL (blank import)
 	"github.com/jmoiron/sqlx"                       // Extensão do database/sql
+	"os"
 )
 
 type MySQLItemRepository struct { // Struct que implementa ItemRepository
@@ -15,14 +16,22 @@ type MySQLItemRepository struct { // Struct que implementa ItemRepository
 
 var _ entity.ItemRepository = (*MySQLItemRepository)(nil)
 
-func Conectar() (*sqlx.DB, error) { // ❌ CRÍTICO: credenciais hardcoded
-	db, err := sqlx.Open("mysql", "root:root@tcp(localhost:3306)/desafio_itens?parseTime=true")
-	if err != nil { // 🛡️ VALIDATION GUARD
+func Conectar() (*sqlx.DB, error) {
+	user := os.Getenv("DB_USER")
+	pass := os.Getenv("DB_PASSWORD")
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	dbname := os.Getenv("DB_NAME")
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, host, port, dbname)
+	// Por exemplo: admin:admin@tcp(mysql:3306)/desafio_itens?parseTime=true
+
+	db, err := sqlx.Open("mysql", dsn)
+	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
-
 func NewMySQLItemRepository(db *sqlx.DB) *MySQLItemRepository { // Factory function
 	return &MySQLItemRepository{db: db} // Injeta dependência da conexão
 }
@@ -30,7 +39,7 @@ func NewMySQLItemRepository(db *sqlx.DB) *MySQLItemRepository { // Factory funct
 func (r *MySQLItemRepository) AddItem(item entity.Item) (entity.Item, error) {
 	result, err := r.db.Exec("INSERT INTO itens (code, nome, preco, descricao, estoque, status) VALUES (?, ?, ?, ?, ?, ?)",
 		item.Code, item.Nome, item.Preco, item.Descricao, item.Estoque, item.Status) // 🌐 EXTERNAL CALL + prepared statement
-	if err != nil { // 🛡️ VALIDATION GUARD
+	if err != nil {                                                                  // 🛡️ VALIDATION GUARD
 		return entity.Item{}, err
 	}
 
