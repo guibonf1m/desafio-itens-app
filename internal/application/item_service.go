@@ -5,6 +5,7 @@ import (
 	"errors"                                        // Para criar erros simples
 	"fmt"                                           // Para formatar erros
 	"math"                                          // Para cálculos (Ceil)
+	"time"
 )
 
 type itemService struct { // Struct que implementa as regras de negócio
@@ -16,6 +17,8 @@ type ItemService interface { // Interface que define operações do service
 	AddItem(item entity.Item) (entity.Item, error)
 	GetItens() ([]entity.Item, error)
 	GetItensFiltrados(status *entity.Status, limit int) ([]entity.Item, int, int, error)
+	GetItensPaginados(page, pageSize int) ([]entity.Item, int, error)
+	GetItensFiltradosPaginados(status *entity.Status, page, pageSize int) ([]entity.Item, int, error)
 	UpdateItem(item entity.Item) error
 	DeleteItem(id int) error
 }
@@ -27,6 +30,11 @@ func NewItemService(repo entity.ItemRepository) *itemService { // Factory: cria 
 }
 
 func (s *itemService) AddItem(item entity.Item) (entity.Item, error) {
+	// ✅ DEFINIR timestamps no Service
+	now := time.Now()
+	item.CreatedAt = &now
+	item.UpdatedAt = &now
+
 	if item.Preco <= 0 { // Valida preço positivo
 		return entity.Item{}, errors.New("O produto tem preço inválido.")
 	}
@@ -77,6 +85,48 @@ func (s *itemService) GetItens() ([]entity.Item, error) {
 	return itens, nil // Retorna lista completa
 }
 
+func (s *itemService) GetItensPaginados(page, pageSize int) ([]entity.Item, int, error) {
+	// 🛡️ VALIDAÇÕES dos parâmetros
+	if page < 1 {
+		page = 1 // Página mínima é 1
+	}
+	if pageSize < 1 {
+		pageSize = 10 // Padrão 10 itens
+	}
+	if pageSize > 100 {
+		pageSize = 100 // Máximo 100 itens por página
+	}
+
+	// 🧮 CALCULAR o OFFSET
+	offset := (page - 1) * pageSize
+
+	// 📞 CHAMAR o Repository paginado
+	itens, totalItens, err := s.repo.GetItensPaginados(offset, pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Erro ao buscar itens paginados: %w", err)
+	}
+
+	return itens, totalItens, nil
+}
+
+func (s *itemService) GetItensFiltradosPaginados(status *entity.Status, page, pageSize int) ([]entity.Item, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	// Calcular offset
+	offset := (page - 1) * pageSize
+
+	// Chamar Repository com filtros + paginação
+	return s.repo.GetItensFiltradosPaginados(status, offset, pageSize)
+}
+
 func (s *itemService) generateUniqueCode(nome string) (string, error) {
 	maxTentativas := 5
 
@@ -125,33 +175,27 @@ func (s *itemService) GetItensFiltrados(status *entity.Status, limit int) (itens
 }
 
 func (s *itemService) UpdateItem(item entity.Item) error {
-	itemExistente, err := s.repo.GetItem(item.ID) // Verifica se item existe
-
-	if err != nil {
-		return fmt.Errorf("Erro ao buscar o item: %w", err)
+	// ✅ PASSO 1: Validações de negócio (item já vem pronto)
+	if item.Preco <= 0 {
+		return fmt.Errorf("Preço deve ser maior que zero")
 	}
 
-	if itemExistente == nil { // Se não encontrou
-		return fmt.Errorf("Item não encontrado para atualização.")
+	if item.Estoque < 0 {
+		return fmt.Errorf("Estoque não pode ser negativo")
 	}
 
-	if item.Preco <= 0 { // Valida preço
-		return fmt.Errorf("O produto tem preço inválido.")
-	}
-
-	if item.Estoque < 0 { // Valida estoque
-		return fmt.Errorf("O produto tem estoque inválido.")
-	}
-
-	if item.Estoque == 0 { // Recalcula status
+	// ✅ PASSO 2: Recalcular status baseado no estoque
+	if item.Estoque == 0 {
 		item.Status = entity.StatusInativo
 	} else {
 		item.Status = entity.StatusAtivo
 	}
 
-	if err := s.repo.UpdateItem(item); err != nil { // ❌ BUG: sobrescreve campos vazios
+	// ✅ PASSO 3: Salvar no banco
+	if err := s.repo.UpdateItem(item); err != nil {
 		return fmt.Errorf("Erro ao atualizar o item: %w", err)
 	}
+
 	return nil
 }
 

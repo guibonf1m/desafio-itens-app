@@ -13,6 +13,8 @@ type MySQLItemRepository struct { // Struct que implementa ItemRepository
 	db *sqlx.DB // Conexão com o banco
 }
 
+var _ entity.ItemRepository = (*MySQLItemRepository)(nil)
+
 func Conectar() (*sqlx.DB, error) { // ❌ CRÍTICO: credenciais hardcoded
 	db, err := sqlx.Open("mysql", "root:root@tcp(localhost:3306)/desafio_itens?parseTime=true")
 	if err != nil { // 🛡️ VALIDATION GUARD
@@ -51,7 +53,7 @@ func (r *MySQLItemRepository) GetItem(id int) (*entity.Item, error) {
 
 	var item entity.Item
 	err := row.Scan(&item.ID, &item.Code, &item.Nome, &item.Descricao, &item.Preco, &item.Estoque,
-		&item.Status, &item.Creado_em, &item.Atualizado_em) // 🔄 TRANSFORMATION: SQL → struct
+		&item.Status, &item.CreatedAt, &item.UpdatedAt) // 🔄 TRANSFORMATION: SQL → struct
 	if err != nil {
 		if err == sql.ErrNoRows { // ⚙️ BUSINESS RULE: trata "não encontrado"
 			return nil, fmt.Errorf("Item não encontrado com id %d", id)
@@ -74,6 +76,32 @@ func (r *MySQLItemRepository) GetItens() ([]entity.Item, error) {
 	return itens, nil
 }
 
+func (r *MySQLItemRepository) GetItensPaginados(offset, limit int) ([]entity.Item, int, error) {
+
+	var itens []entity.Item
+
+	var totalItens int
+	countQuery := "SELECT COUNT(*) FROM itens"
+	err := r.db.Get(&totalItens, countQuery)
+	if err != nil {
+		return nil, 0, fmt.Errorf("erro ao contar itens: %w", err)
+	}
+
+	// 🔍 PASSO 2: Buscar itens com OFFSET e LIMIT
+	const query = `SELECT id, code, nome, descricao, preco, estoque, status, 
+                   created_at AS created_at, updated_at AS updated_at 
+                   FROM itens 
+                   ORDER BY created_at DESC 
+                   LIMIT ? OFFSET ?`
+
+	err = r.db.Select(&itens, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("erro ao buscar itens paginados: %w", err)
+	}
+
+	return itens, totalItens, nil
+}
+
 func (r *MySQLItemRepository) GetItensFiltrados(status *entity.Status, limit int) ([]entity.Item, error) {
 	var (
 		query = `SELECT id, code, nome, descricao, preco, estoque, status, created_at, updated_at FROM itens`
@@ -92,6 +120,44 @@ func (r *MySQLItemRepository) GetItensFiltrados(status *entity.Status, limit int
 		return nil, err
 	}
 	return itens, nil
+}
+
+func (r *MySQLItemRepository) GetItensFiltradosPaginados(status *entity.Status, offset, limit int) ([]entity.Item, int, error) {
+	var itens []entity.Item
+
+	// 🔢 CONTAR total com filtro
+	countQuery := "SELECT COUNT(*) FROM itens"
+	var args []interface{}
+
+	if status != nil {
+		countQuery += " WHERE status = ?"
+		args = append(args, *status)
+	}
+
+	var totalItens int
+	err := r.db.Get(&totalItens, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 🔍 BUSCAR itens com filtro + paginação
+	query := `SELECT id, code, nome, descricao, preco, estoque, status, 
+              created_at AS created_at, updated_at AS updated_at 
+              FROM itens`
+
+	if status != nil {
+		query += " WHERE status = ?"
+	}
+
+	query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	err = r.db.Select(&itens, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return itens, totalItens, nil
 }
 
 func (r *MySQLItemRepository) CountItens(status *entity.Status) (int, error) {

@@ -2,6 +2,7 @@ package http
 
 import (
 	entity "desafio-itens-app/internal/domain/item"
+	"strings"
 	"time"
 )
 
@@ -24,8 +25,9 @@ type ItemResponse struct {
 }
 
 type UpdateItemRequest struct {
-	Preco   float64 `json:"preco"`
-	Estoque int     `json:"estoque"`
+	Preco     *float64 `json:"preco,omitempty"`
+	Estoque   *int     `json:"estoque,omitempty"`
+	Descricao *string  `json:"descricao,omitempty"`
 }
 
 func (r *CreateItemRequest) ToEntity() entity.Item {
@@ -46,15 +48,20 @@ func FromEntity(item entity.Item) ItemResponse {
 		Preco:     item.Preco,
 		Estoque:   item.Estoque,
 		Status:    item.Status,
-		CreatedAt: item.Creado_em,
-		UpdatedAt: item.Atualizado_em,
+		CreatedAt: item.CreatedAt,
+		UpdatedAt: item.UpdatedAt,
 	}
 }
 
-func (r *UpdateItemRequest) ToEntity(id int) entity.Item {
-	return entity.Item{
-		ID:      id,
-		Preco:   r.Preco,
-		Estoque: r.Estoque,
+func (r *UpdateItemRequest) ApplyTo(item *entity.Item) {
+
+	if r.Descricao != nil {
+		item.Descricao = strings.TrimSpace(*r.Descricao)
+	}
+	if r.Preco != nil && *r.Preco > 0 {
+		item.Preco = *r.Preco
+	}
+	if r.Estoque != nil && *r.Estoque >= 0 {
+		item.Estoque = *r.Estoque
 	}
 }

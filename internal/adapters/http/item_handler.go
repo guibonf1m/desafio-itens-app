@@ -105,22 +105,37 @@ func (h *ItemHandler) GetItem(c *gin.Context) {
 }
 
 func (h *ItemHandler) GetItens(c *gin.Context) {
-	statusParam := c.Query("status") // Query parameter opcional
-	limitParam := c.Query("limit")   // Query parameter opcional
+	// 🔍 PARÂMETROS DE FILTRO (já existentes)
+	statusParam := c.Query("status") // ?status=active
 
-	var status *entity.Status // Ponteiro para permitir nil
-	if statusParam != "" {    // ⚙️ BUSINESS RULE: filtro condicional
-		s := entity.Status(statusParam) // 🔄 TRANSFORMATION: string → Status
+	// 📄 PARÂMETROS DE PAGINAÇÃO (novos)
+	pageParam := c.DefaultQuery("page", "1")          // ?page=2
+	pageSizeParam := c.DefaultQuery("pageSize", "10") // ?pageSize=5
+
+	// 🔄 PROCESSAR filtro de status (já existente)
+	var status *entity.Status
+	if statusParam != "" {
+		s := entity.Status(statusParam)
 		status = &s
 	}
 
-	limit := 10                                         // Default limit
-	if l, err := strconv.Atoi(limitParam); err == nil { // 🔄 TRANSFORMATION: string → int
-		limit = l
+	// 🔄 PROCESSAR parâmetros de paginação
+	page, err := strconv.Atoi(pageParam)
+	if err != nil || page < 1 {
+		page = 1
 	}
 
-	itens, totalItens, totalPages, err := h.service.GetItensFiltrados(status, limit) // 🌐 EXTERNAL CALL
-	if err != nil {                                                                  // 🛡️ VALIDATION GUARD
+	pageSize, err := strconv.Atoi(pageSizeParam)
+	if err != nil || pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100 // Limite máximo
+	}
+
+	// 📞 CHAMAR Service com paginação E filtros
+	itens, totalItens, err := h.service.GetItensFiltradosPaginados(status, page, pageSize)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
@@ -128,12 +143,17 @@ func (h *ItemHandler) GetItens(c *gin.Context) {
 		return
 	}
 
-	resp := make([]ItemResponse, 0, len(itens)) // Pre-aloca slice para performance
+	// 🔄 TRANSFORMAR para Response (igual ao seu código)
+	resp := make([]ItemResponse, 0, len(itens))
 	for _, it := range itens {
-		resp = append(resp, FromEntity(it)) // 🔄 TRANSFORMATION: Entity → DTO
+		resp = append(resp, FromEntity(it))
 	}
 
-	c.JSON(http.StatusOK, ResponseInfo{ // Resposta com paginação
+	// 🧮 CALCULAR total de páginas
+	totalPages := (totalItens + pageSize - 1) / pageSize
+
+	// ✅ RESPOSTA com sua struct ResponseInfo + paginação
+	c.JSON(http.StatusOK, ResponseInfo{
 		TotalItens: totalItens,
 		TotalPages: totalPages,
 		Data:       resp,
@@ -142,10 +162,20 @@ func (h *ItemHandler) GetItens(c *gin.Context) {
 }
 
 func (h *ItemHandler) UpdateItem(c *gin.Context) {
-	idParam := c.Param("id") // Parâmetro da URL
+	// 🔄 TRANSFORMATION: string → int
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: "Id inválido",
+		})
+		return
+	}
 
-	id, err := strconv.Atoi(idParam) // 🔄 TRANSFORMATION: string → int
-	if err != nil || id <= 0 {       // 🛡️ VALIDATION GUARD: ID válido
+	// 🔄 TRANSFORMATION: JSON → DTO
+	var req UpdateItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
@@ -153,32 +183,29 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	var req UpdateItemRequest                      // DTO para update
-	if err := c.ShouldBindJSON(&req); err != nil { // 🔄 TRANSFORMATION: JSON → struct
-		c.JSON(http.StatusBadRequest, ResponseInfo{ // 🛡️ VALIDATION GUARD
+	existingItem, err := h.service.GetItem(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, ResponseInfo{
+			Error:  true,
+			Result: "Item não encontrado",
+		})
+		return
+	}
+
+	// 🔄 APLICA MUDANÇAS DE FORMA SEGURA
+	req.ApplyTo(existingItem)
+
+	// 💾 SALVAR no banco
+	if err := h.service.UpdateItem(*existingItem); err != nil {
+		c.JSON(http.StatusInternalServerError, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
 		})
 		return
 	}
 
-	itemToUpdate := req.ToEntity(id) // 🔄 TRANSFORMATION: DTO → Entity
-
-	if err := h.service.UpdateItem(itemToUpdate); err != nil { // 🌐 EXTERNAL CALL
-		msg := err.Error()
-
-		switch { // ⚙️ BUSINESS RULE: mapeia erros para HTTP status
-		case strings.Contains(msg, "não encontrado"):
-			c.JSON(404, ResponseInfo{Error: true, Result: msg})
-		case strings.Contains(msg, "inválido"):
-			c.JSON(400, ResponseInfo{Error: true, Result: msg})
-		default:
-			c.JSON(500, ResponseInfo{Error: true, Result: "Erro interno: " + msg})
-		}
-		return
-	}
-
-	c.JSON(http.StatusOK, ResponseInfo{ // Sucesso
+	// ✅ RETORNAR item atualizado
+	c.JSON(http.StatusOK, ResponseInfo{
 		TotalPages: 1,
 		Error:      false,
 		Result:     "Item atualizado com sucesso!",
