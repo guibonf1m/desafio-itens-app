@@ -213,9 +213,9 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 }
 
 func (h *ItemHandler) DeleteItem(c *gin.Context) {
-	idParam := c.Param("id")         // Parâmetro da URL
-	id, err := strconv.Atoi(idParam) // 🔄 TRANSFORMATION: string → int
-	if err != nil || id <= 0 {       // 🛡️ VALIDATION GUARD
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: "ID inválido",
@@ -223,19 +223,20 @@ func (h *ItemHandler) DeleteItem(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteItem(id); err != nil { // 🌐 EXTERNAL CALL
-		msg := err.Error()
-		switch { // ⚙️ BUSINESS RULE: mapeia erros
-		case strings.Contains(msg, "Nenhum item encontrado"):
-			c.JSON(http.StatusNotFound, ResponseInfo{
-				Error:  true,
-				Result: msg,
-			})
-		default: // ❌ BUG: sempre retorna sucesso
-			c.JSON(http.StatusOK, ResponseInfo{
-				Error:  false,
-				Result: "Item deletado com sucesso!",
-			})
-		}
+	// 🔑 CORREÇÃO: Lógica simples e clara
+	err = h.service.DeleteItem(id)
+	if err != nil {
+		// ✅ QUALQUER erro = resposta de erro
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: err.Error(), // "item com ID 999 não encontrado"
+		})
+		return
 	}
+
+	// ✅ SÓ chega aqui se NÃO teve erro
+	c.JSON(http.StatusOK, ResponseInfo{
+		Error:  false,
+		Result: "Item deletado com sucesso!",
+	})
 }

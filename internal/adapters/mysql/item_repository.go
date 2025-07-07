@@ -167,9 +167,16 @@ func (r *MySQLItemRepository) UpdateItem(item entity.Item) error {
 }
 
 func (r *MySQLItemRepository) DeleteItem(id int) error {
-	err := r.db.Delete(&ItemModel{}, id).Error
-	if err != nil {
-		return fmt.Errorf("Erro ao deletar item: %w", err)
+	result := r.db.Delete(&ItemModel{}, id)
+
+	if result.Error != nil {
+		return fmt.Errorf("erro ao deletar item: %w", result.Error)
 	}
+
+	// 🔍 Verificar se alguma linha foi afetada
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("item com ID %d não encontrado", id)
+	}
+
 	return nil
 }
