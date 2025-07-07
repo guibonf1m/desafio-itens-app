@@ -9,20 +9,16 @@ import (
 )
 
 func main() {
-	db, err := mysql.Conectar()
+	db, err := mysql.ConectarGORM()
 	if err != nil {
 		log.Fatal("Erro ao conectar com o banco:", err)
 	}
-	defer db.Close()
 
 	repo := mysql.NewMySQLItemRepository(db)
-
 	service := application.NewItemService(repo)
-
 	handler := http.NewItemHandler(service)
 
 	router := RegistrarRotas(handler)
-
 	if err := router.Run(":8080"); err != nil {
 		log.Fatal("Erro ao subir o servidor:", err)
 	}

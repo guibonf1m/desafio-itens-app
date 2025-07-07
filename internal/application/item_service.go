@@ -5,7 +5,6 @@ import (
 	"errors"                                        // Para criar erros simples
 	"fmt"                                           // Para formatar erros
 	"math"                                          // Para cálculos (Ceil)
-	"time"
 )
 
 type itemService struct { // Struct que implementa as regras de negócio
@@ -30,11 +29,7 @@ func NewItemService(repo entity.ItemRepository) *itemService { // Factory: cria 
 }
 
 func (s *itemService) AddItem(item entity.Item) (entity.Item, error) {
-	// ✅ DEFINIR timestamps no Service
-	now := time.Now()
-	item.CreatedAt = &now
-	item.UpdatedAt = &now
-
+	
 	if item.Preco <= 0 { // Valida preço positivo
 		return entity.Item{}, errors.New("O produto tem preço inválido.")
 	}

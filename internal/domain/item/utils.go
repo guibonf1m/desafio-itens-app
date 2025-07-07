@@ -25,11 +25,11 @@ func GenerateItemCode(nome string) (string, error) {
 		}
 	}
 
-	if len(letras) < 3 {
-		return "", errors.New("A palavra deve ter no mínimo 3 letras")
+	if len(letras) < 2 {
+		return "", errors.New("A palavra deve ter no mínimo 2 letras")
 	}
 
-	prefixo := letras[:3]      // Pega primeiros 3: "MOUSE" → "MOU"
+	prefixo := letras[:2]      // Pega primeiros 2: "MOUSE" → "MO"
 	var codigo strings.Builder // Builder eficiente para números
 	for i := 0; i < 8; i++ {   // Loop 8 vezes (8 dígitos)
 		n, err := rand.Int(rand.Reader, big.NewInt(10)) // Gera número 0-9 seguro
