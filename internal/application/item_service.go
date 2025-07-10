@@ -11,17 +11,6 @@ type itemService struct { // Struct que implementa as regras de negócio
 	repo entity.ItemRepository // Dependência: interface do repositório
 }
 
-type ItemService interface { // Interface que define operações do service
-	GetItem(id int) (*entity.Item, error)
-	AddItem(item entity.Item) (entity.Item, error)
-	GetItens() ([]entity.Item, error)
-	GetItensFiltrados(status *entity.Status, limit int) ([]entity.Item, int, int, error)
-	GetItensPaginados(page, pageSize int) ([]entity.Item, int, error)
-	GetItensFiltradosPaginados(status *entity.Status, page, pageSize int) ([]entity.Item, int, error)
-	UpdateItem(item entity.Item) error
-	DeleteItem(id int) error
-}
-
 func NewItemService(repo entity.ItemRepository) *itemService { // Factory: cria nova instância do service
 	return &itemService{ // Injeta dependência do repositório
 		repo: repo,
@@ -29,7 +18,7 @@ func NewItemService(repo entity.ItemRepository) *itemService { // Factory: cria 
 }
 
 func (s *itemService) AddItem(item entity.Item) (entity.Item, error) {
-	
+
 	if item.Preco <= 0 { // Valida preço positivo
 		return entity.Item{}, errors.New("O produto tem preço inválido.")
 	}

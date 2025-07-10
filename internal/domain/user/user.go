@@ -13,13 +13,17 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-func (u *User) isValid() error {
+func (u *User) IsValid() error {
 	if u.Username == "" {
 		return errors.New("Username é obrigatório")
 	}
 
 	if len(u.Username) < 3 {
 		return errors.New("Username deve ter pelo menos 3 letras.")
+	}
+
+	if len(u.Username) > 50 {
+		return errors.New("username deve ter no máximo 50 letras")
 	}
 
 	if u.Password == "" {
