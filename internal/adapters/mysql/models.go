@@ -2,22 +2,59 @@ package mysql
 
 import (
 	entity "desafio-itens-app/internal/domain/item"
+	userEntity "desafio-itens-app/internal/domain/user"
 	"gorm.io/gorm"
 	"time"
 )
 
-// ✅ Model específico para GORM
-type ItemModel struct {
+type UserModel struct {
 	ID        int            `gorm:"primaryKey;autoIncrement"`
-	Code      string         `gorm:"uniqueIndex;size:50;not null"`
-	Nome      string         `gorm:"size:100;not null"`
-	Descricao string         `gorm:"size:500"`
-	Preco     float64        `gorm:"type:decimal(10,2);not null"`
-	Estoque   int            `gorm:"default:0;not null"`
-	Status    string         `gorm:"type:enum('active','inactive');default:'active'"`
+	Username  string         `gorm:"uniqueIndex;size:50;not null"`
+	Password  string         `gorm:"size:255;not null"`
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+func (UserModel) TableName() string {
+	return "users"
+}
+
+func (m *UserModel) toEntity() userEntity.User {
+	return userEntity.User{
+		ID:        m.ID,
+		Username:  m.Username,
+		Password:  m.Password,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
+	}
+}
+
+func fromUserEntity(user userEntity.User) UserModel {
+	return UserModel{
+		ID:        user.ID,
+		Username:  user.Username,
+		Password:  user.Password,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+}
+
+type ItemModel struct {
+	ID            int            `gorm:"primaryKey;autoIncrement"`
+	Code          string         `gorm:"uniqueIndex;size:50;not null"`
+	Nome          string         `gorm:"size:100;not null"`
+	Descricao     string         `gorm:"size:500"`
+	Preco         float64        `gorm:"type:decimal(10,2);not null"`
+	Estoque       int            `gorm:"default:0;not null"`
+	Status        string         `gorm:"type:enum('active','inactive');default:'active'"`
+	CreatedAt     time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	CreatedBy     *int           `gorm:"column:created_by;index"`
+	UpdatedBy     *int           `gorm:"column:updated_by;index"`
+	CreatedByUser *UserModel     `gorm:"foreignKey:CreatedBy;references:ID"`
+	UpdatedByUser *UserModel     `gorm:"foreignKey:UpdatedBy;references:ID"`
 }
 
 func (ItemModel) TableName() string {

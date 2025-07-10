@@ -19,4 +19,6 @@ type Item struct {
 	Status    Status
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	CreatedBy *int
+	UpdateBy  *int
 }

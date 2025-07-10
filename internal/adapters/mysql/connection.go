@@ -17,7 +17,7 @@ func ConectarGORM() (*gorm.DB, error) {
 		return nil, fmt.Errorf("erro ao conectar com GORM: %w", err)
 	}
 
-	err = db.AutoMigrate(&ItemModel{})
+	err = db.AutoMigrate(&ItemModel{}, &UserModel{})
 	if err != nil {
 		return nil, fmt.Errorf("erro na migration: %w", err)
 	}
