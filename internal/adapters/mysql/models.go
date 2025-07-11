@@ -10,6 +10,7 @@ import (
 type UserModel struct {
 	ID        int            `gorm:"primaryKey;autoIncrement"`
 	Username  string         `gorm:"uniqueIndex;size:50;not null"`
+	Email     string         `gorm:"uniqueIndex;not null"`
 	Password  string         `gorm:"size:255;not null"`
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
@@ -24,6 +25,7 @@ func (m *UserModel) toEntity() userEntity.User {
 	return userEntity.User{
 		ID:        m.ID,
 		Username:  m.Username,
+		Email:     m.Email,
 		Password:  m.Password,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
@@ -34,6 +36,7 @@ func fromUserEntity(user userEntity.User) UserModel {
 	return UserModel{
 		ID:        user.ID,
 		Username:  user.Username,
+		Email:     user.Email,
 		Password:  user.Password,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,

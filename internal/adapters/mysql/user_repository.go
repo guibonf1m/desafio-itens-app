@@ -54,6 +54,20 @@ func (r *MySQLUserRepository) GetByUsername(username string) (*userDomain.User, 
 	return &user, nil
 }
 
+func (r *MySQLUserRepository) GetByEmail(email string) (*userDomain.User, error) {
+	var model UserModel
+
+	err := r.db.Where("email = ?", email).First(&model).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("usuário com email %s não encontrado", email)
+		}
+		return nil, fmt.Errorf("erro ao buscar usuário: %w", err)
+	}
+	user := model.toEntity()
+	return &user, nil
+}
+
 func (r *MySQLUserRepository) Update(user userDomain.User) error {
 	model := fromUserEntity(user)
 
@@ -71,7 +85,7 @@ func (r *MySQLUserRepository) Delete(id int) error {
 		return fmt.Errorf("erro ao deletar usuário: %w", result.Error)
 	}
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("usuário com ID %d não encontrado,", id)
+		return fmt.Errorf("usuário com ID %d não encontrado", id)
 	}
 	return nil
 }
@@ -79,10 +93,20 @@ func (r *MySQLUserRepository) Delete(id int) error {
 func (r *MySQLUserRepository) UserNameExists(username string) (bool, error) {
 	var count int64
 
-	err := r.db.Model(&UserModel{}).Where("username = ?", username).Count(&count)
+	err := r.db.Model(&UserModel{}).Where("username = ?", username).Count(&count).Error
 	if err != nil {
 		return false, fmt.Errorf("erro ao verificar username: %w", err)
 	}
 
+	return count > 0, nil
+}
+
+func (r *MySQLUserRepository) EmailExists(email string) (bool, error) {
+	var count int64
+
+	err := r.db.Model(&UserModel{}).Where("email = ?", email).Count(&count).Error
+	if err != nil {
+		return false, fmt.Errorf("erro ao verificar email: %w", err)
+	}
 	return count > 0, nil
 }
