@@ -1,4 +1,4 @@
-package application
+package service
 
 import (
 	entity "desafio-itens-app/internal/domain/item" // Importa entidades do domínio

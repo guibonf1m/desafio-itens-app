@@ -1,4 +1,4 @@
-package application
+package ports
 
 import (
 	entity "desafio-itens-app/internal/domain/item"

@@ -1,13 +1,12 @@
-package http
+package handler
 
 import (
-	"desafio-itens-app/internal/application"        // Service layer
+	"desafio-itens-app/internal/adapters/http/dto"
+	"desafio-itens-app/internal/application/ports"
 	entity "desafio-itens-app/internal/domain/item" // Domain entities
-	"encoding/json"                                 // JSON parsing
 	"github.com/gin-gonic/gin"                      // HTTP framework
 	"net/http"                                      // HTTP status codes
 	"strconv"                                       // String conversions
-	"strings"                                       // String manipulation
 )
 
 type ResponseInfo struct { // Padronização de resposta HTTP
@@ -25,55 +24,62 @@ type PageInfo struct {
 }
 
 type ItemHandler struct { // Handler para operações de Item
-	service application.ItemService // Dependência: service layer
+	service ports.ItemService // Dependência: service layer
 }
 
-func NewItemHandler(service application.ItemService) *ItemHandler { // Factory function
+func NewItemHandler(service ports.ItemService) *ItemHandler { // Factory function
 	return &ItemHandler{service: service} // Injeta dependência
 }
 
 func (h *ItemHandler) AddItem(c *gin.Context) {
-	var req CreateItemRequest // DTO para request
-
-	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil { // 🔄 TRANSFORMATION: JSON → struct
-		c.JSON(http.StatusBadRequest, ResponseInfo{ // 🛡️ VALIDATION GUARD
+	// PASSO 1: EXTRAIR userID do context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ResponseInfo{
 			Error:  true,
-			Result: "Erro ao decodificar JSON",
+			Result: "Usuário não autenticado",
 		})
 		return
 	}
 
-	item := req.ToEntity() // 🔄 TRANSFORMATION: DTO → Entity
-
-	itemCriado, err := h.service.AddItem(item) // 🌐 EXTERNAL CALL
-	if err != nil {
-		msg := err.Error()
-
-		switch { // ⚙️ BUSINESS RULE: mapeia erro → status HTTP
-		case strings.Contains(msg, "já existe"): // 409 - Recurso duplicado
-			c.JSON(http.StatusConflict, ResponseInfo{
-				Error:  true,
-				Result: msg,
-			})
-		case strings.Contains(msg, "inválido"): // 400 - Dados inválidos
-			c.JSON(http.StatusBadRequest, ResponseInfo{
-				Error:  true,
-				Result: msg,
-			})
-		default: // 500 - Erro interno
-			c.JSON(http.StatusInternalServerError, ResponseInfo{
-				Error:  true,
-				Result: "Erro interno: " + msg,
-			})
-		}
+	// PASSO 2: CONVERTER para int
+	userIDInt, ok := userID.(int)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ResponseInfo{
+			Error:  true,
+			Result: "Erro interno: userID inválido",
+		})
 		return
 	}
 
-	itemResponse := FromEntity(itemCriado) // 🔄 TRANSFORMATION: Entity → DTO
+	// PASSO 3: RECEBER e VALIDAR JSON
+	var req dto.CreateItemRequest // ← Usando SEU DTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
 
-	c.JSON(http.StatusCreated, ResponseInfo{ // 201 - Recurso criado
-		TotalPages: 1,
-		Data:       []ItemResponse{itemResponse},
+	// PASSO 4: CONVERTER para Entity e DEFINIR auditoria
+	item := req.ToEntity()      // ← Usando SEU método
+	item.CreatedBy = &userIDInt // ← AUDITORIA: quem criou
+
+	// PASSO 5: CHAMAR Service
+	createdItem, err := h.service.AddItem(item)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
+
+	// PASSO 6: RETORNAR resposta
+	c.JSON(http.StatusCreated, ResponseInfo{
+		Error:  false,
+		Result: dto.FromEntity(createdItem), // ← Usando SEU método
 	})
 }
 
@@ -144,9 +150,9 @@ func (h *ItemHandler) GetItens(c *gin.Context) {
 	}
 
 	// 🔄 TRANSFORMAR para Response (igual ao seu código)
-	resp := make([]ItemResponse, 0, len(itens))
+	resp := make([]dto.ItemResponse, 0, len(itens))
 	for _, it := range itens {
-		resp = append(resp, FromEntity(it))
+		resp = append(resp, dto.FromEntity(it))
 	}
 
 	// 🧮 CALCULAR total de páginas
@@ -162,19 +168,39 @@ func (h *ItemHandler) GetItens(c *gin.Context) {
 }
 
 func (h *ItemHandler) UpdateItem(c *gin.Context) {
-	// 🔄 TRANSFORMATION: string → int
+	// PASSO 1: EXTRAIR userID do context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ResponseInfo{
+			Error:  true,
+			Result: "Usuário não autenticado",
+		})
+		return
+	}
+
+	// PASSO 2: CONVERTER para int
+	userIDInt, ok := userID.(int)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ResponseInfo{
+			Error:  true,
+			Result: "Erro interno: userID inválido",
+		})
+		return
+	}
+
+	// PASSO 3: PEGAR ID da URL
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
-			Result: "Id inválido",
+			Result: "ID inválido",
 		})
 		return
 	}
 
-	// 🔄 TRANSFORMATION: JSON → DTO
-	var req UpdateItemRequest
+	// PASSO 4: RECEBER e VALIDAR JSON
+	var req dto.UpdateItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
@@ -183,32 +209,35 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
+	// PASSO 5: BUSCAR item existente
 	existingItem, err := h.service.GetItem(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, ResponseInfo{
-			Error:  true,
-			Result: "Item não encontrado",
-		})
-		return
-	}
-
-	// 🔄 APLICA MUDANÇAS DE FORMA SEGURA
-	req.ApplyTo(existingItem)
-
-	// 💾 SALVAR no banco
-	if err := h.service.UpdateItem(*existingItem); err != nil {
-		c.JSON(http.StatusInternalServerError, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),
 		})
 		return
 	}
 
-	// ✅ RETORNAR item atualizado
+	// PASSO 6: APLICAR mudanças e DEFINIR auditoria
+	updatedItem := *existingItem
+	req.ApplyTo(&updatedItem)         // ← Usando SEU método
+	updatedItem.UpdateBy = &userIDInt // ← AUDITORIA: quem atualizou
+
+	// PASSO 7: CHAMAR Service
+	err = h.service.UpdateItem(updatedItem)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
+
+	// PASSO 8: RETORNAR resposta
 	c.JSON(http.StatusOK, ResponseInfo{
-		TotalPages: 1,
-		Error:      false,
-		Result:     "Item atualizado com sucesso!",
+		Error:  false,
+		Result: dto.FromEntity(updatedItem),
 	})
 }
 

@@ -1,4 +1,4 @@
-package http
+package dto
 
 import (
 	userDomain "desafio-itens-app/internal/domain/user"
@@ -27,6 +27,12 @@ type UserResponse struct {
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+type LoginResponse struct {
+	Token     string       `json:"token"`
+	ExpiresIn int64        `json:"expires_in"`
+	User      UserResponse `json:"user"`
 }
 
 // ToEntity converte CreateUserRequest → User

@@ -1,6 +1,7 @@
-package application
+package service
 
 import (
+	"desafio-itens-app/internal/application/ports"
 	userDomain "desafio-itens-app/internal/domain/user"
 	"errors"
 	"fmt"
@@ -12,7 +13,7 @@ type userService struct {
 	repo userDomain.UserRepository
 }
 
-func NewUserService(repo userDomain.UserRepository) UserService {
+func NewUserService(repo userDomain.UserRepository) ports.UserService {
 	return &userService{repo: repo}
 }
 
