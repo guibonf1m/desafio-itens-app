@@ -9,33 +9,39 @@ import (
 func RegistrarRotas(itemHandler *handler.ItemHandler, userHandler *handler.UserHandler, authMiddleware *middlewares.AuthMiddleware) *gin.Engine {
 	router := gin.Default()
 
+	// 🌍 ROTAS PÚBLICAS (sem autenticação)
 	public := router.Group("v1")
 	{
 		public.POST("/register", userHandler.Register)
 		public.POST("/login", userHandler.Login)
 	}
 
-	protected := router.Group("v1")
-	protected.Use(authMiddleware.RequireAuth())
+	// 🔐 ROTAS PARA USUÁRIOS LOGADOS (qualquer role)
+	authenticated := router.Group("v1")
+	authenticated.Use(authMiddleware.RequireAuth()) // ← 1º segurança
 	{
+		// Qualquer usuário logado pode VER itens
+		authenticated.GET("/itens", itemHandler.GetItens)
+		authenticated.GET("/itens/:id", itemHandler.GetItem)
+	}
 
-		itens := protected.Group("/itens")
-		{
-			itens.POST("", itemHandler.AddItem)
-			itens.GET("/:id", itemHandler.GetItem)
-			itens.GET("", itemHandler.GetItens)
-			itens.PUT("/:id", itemHandler.UpdateItem)
-			itens.DELETE("/:id", itemHandler.DeleteItem)
-		}
+	// 👤 ROTAS PARA USUÁRIOS (user ou admin)
+	userRoutes := router.Group("v1")
+	userRoutes.Use(authMiddleware.RequireAuth())                // ← 1º segurança
+	userRoutes.Use(authMiddleware.RequireRole("user", "admin")) // ← 2º segurança
+	{
+		userRoutes.POST("/itens", itemHandler.AddItem)       // Criar item
+		userRoutes.PUT("/itens/:id", itemHandler.UpdateItem) // Editar item
+	}
 
-		users := protected.Group("/users")
-		{
-			users.POST("", userHandler.CreateUser)
-			users.GET("/:id", userHandler.GetUser)
-			users.PUT("/:id", userHandler.UpdateUser)
-			users.DELETE("/: id", userHandler.DeleteUser)
-			users.GET("/username/:username", userHandler.GetUserByUsername)
-		}
+	// 👑 ROTAS SÓ PARA ADMIN
+	adminRoutes := router.Group("v1")
+	adminRoutes.Use(authMiddleware.RequireAuth())        // ← 1º segurança
+	adminRoutes.Use(authMiddleware.RequireRole("admin")) // ← 2º segurança
+	{
+		adminRoutes.DELETE("/itens/:id", itemHandler.DeleteItem) // Só admin deleta
+		adminRoutes.GET("/users", userHandler.ListUsers)         // Gerenciar usuários
+		adminRoutes.POST("/users", userHandler.CreateUser)       // Criar usuários
 	}
 
 	return router

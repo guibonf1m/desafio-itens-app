@@ -4,9 +4,10 @@ import (
 	"desafio-itens-app/internal/adapters/http/dto"
 	"desafio-itens-app/internal/application/ports"
 	entity "desafio-itens-app/internal/domain/item" // Domain entities
-	"github.com/gin-gonic/gin"                      // HTTP framework
-	"net/http"                                      // HTTP status codes
-	"strconv"                                       // String conversions
+	"fmt"
+	"github.com/gin-gonic/gin" // HTTP framework
+	"net/http"                 // HTTP status codes
+	"strconv"                  // String conversions
 )
 
 type ResponseInfo struct { // Padronização de resposta HTTP
@@ -34,6 +35,11 @@ func NewItemHandler(service ports.ItemService) *ItemHandler { // Factory functio
 func (h *ItemHandler) AddItem(c *gin.Context) {
 	// PASSO 1: EXTRAIR userID do context
 	userID, exists := c.Get("userID")
+
+	// 🔍 DEBUG - adicionar logs
+	fmt.Printf("🔍 DEBUG - userID exists: %v\n", exists)
+	fmt.Printf("🔍 DEBUG - userID value: %v\n", userID)
+
 	if !exists {
 		c.JSON(http.StatusUnauthorized, ResponseInfo{
 			Error:  true,
@@ -44,6 +50,8 @@ func (h *ItemHandler) AddItem(c *gin.Context) {
 
 	// PASSO 2: CONVERTER para int
 	userIDInt, ok := userID.(int)
+	fmt.Printf("🔍 DEBUG - userIDInt: %v, ok: %v\n", userIDInt, ok) // ← Mais um log
+
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ResponseInfo{
 			Error:  true,
@@ -53,7 +61,7 @@ func (h *ItemHandler) AddItem(c *gin.Context) {
 	}
 
 	// PASSO 3: RECEBER e VALIDAR JSON
-	var req dto.CreateItemRequest // ← Usando SEU DTO
+	var req dto.CreateItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
@@ -63,8 +71,9 @@ func (h *ItemHandler) AddItem(c *gin.Context) {
 	}
 
 	// PASSO 4: CONVERTER para Entity e DEFINIR auditoria
-	item := req.ToEntity()      // ← Usando SEU método
-	item.CreatedBy = &userIDInt // ← AUDITORIA: quem criou
+	item := req.ToEntity()
+	item.CreatedBy = &userIDInt
+	fmt.Printf("🔍 DEBUG - item.CreatedBy: %v\n", item.CreatedBy) // ← Mais um log
 
 	// PASSO 5: CHAMAR Service
 	createdItem, err := h.service.AddItem(item)
@@ -79,7 +88,7 @@ func (h *ItemHandler) AddItem(c *gin.Context) {
 	// PASSO 6: RETORNAR resposta
 	c.JSON(http.StatusCreated, ResponseInfo{
 		Error:  false,
-		Result: dto.FromEntity(createdItem), // ← Usando SEU método
+		Result: dto.FromEntity(createdItem),
 	})
 }
 

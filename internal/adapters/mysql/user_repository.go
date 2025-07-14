@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	userDomain "desafio-itens-app/internal/domain/user"
 	"fmt"
 	"gorm.io/gorm"
@@ -39,6 +40,29 @@ func (r *MySQLUserRepository) GetById(id int) (*userDomain.User, error) {
 	}
 	user := model.toEntity()
 	return &user, nil
+}
+
+func (r *MySQLUserRepository) List(ctx context.Context, limit, offset int) ([]*userDomain.User, int64, error) {
+	var models []UserModel
+	var totalCount int64
+
+	err := r.db.WithContext(ctx).Model(&UserModel{}).Count(&totalCount).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("erro ao contar os usuários: %w", err)
+	}
+
+	err = r.db.WithContext(ctx).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("erro ao buscar usuários: %w", err)
+	}
+
+	var users []*userDomain.User
+	for _, model := range models {
+		user := model.toEntity()
+		users = append(users, &user)
+	}
+
+	return users, totalCount, nil
 }
 
 func (r *MySQLUserRepository) GetByUsername(username string) (*userDomain.User, error) {

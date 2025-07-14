@@ -22,6 +22,8 @@ type ItemResponse struct {
 	Status    entity.Status `json:"status"`
 	CreatedAt time.Time     `json:"created_at"`
 	UpdatedAt time.Time     `json:"updated_at"`
+	CreatedBy *int          `json:"created_by,omitempty"`
+	UpdatedBy *int          `json:"updated_by,omitempty"`
 }
 
 type UpdateItemRequest struct {
@@ -50,6 +52,8 @@ func FromEntity(item entity.Item) ItemResponse {
 		Status:    item.Status,
 		CreatedAt: item.CreatedAt,
 		UpdatedAt: item.UpdatedAt,
+		CreatedBy: item.CreatedBy,
+		UpdatedBy: item.UpdateBy,
 	}
 }
 

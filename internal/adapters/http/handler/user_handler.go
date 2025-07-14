@@ -81,6 +81,28 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 }
 
+func (h *UserHandler) ListUsers(c *gin.Context) {
+	// PASSO 1: Pegar parâmetros de paginação
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	// PASSO 2: Chamar service
+	result, err := h.service.ListUsers(c.Request.Context(), page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ResponseInfo{
+			Error:  true,
+			Result: err.Error(),
+		})
+		return
+	}
+
+	// PASSO 3: Retornar lista
+	c.JSON(http.StatusOK, ResponseInfo{
+		Error:  false,
+		Result: result,
+	})
+}
+
 func (h *UserHandler) GetUserByUsername(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {
@@ -236,7 +258,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.jwtService.GenerateToken(user.ID, user.Username)
+	token, err := h.jwtService.GenerateToken(user.ID, user.Username, string(user.Role))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ResponseInfo{
 			Error:  true,
@@ -278,7 +300,7 @@ func (h *UserHandler) ValidateCredentials(c *gin.Context) {
 		return
 	}
 
-	token, err := h.jwtService.GenerateToken(user.ID, user.Username)
+	token, err := h.jwtService.GenerateToken(user.ID, user.Username, string(user.Role))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ResponseInfo{
 			Error:  true,

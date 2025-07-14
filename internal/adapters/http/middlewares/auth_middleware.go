@@ -55,6 +55,51 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("userRole", claims.Role)
+
+		c.Next()
+	}
+}
+
+// RequireRole - segundo segurança que verifica o "cargo"
+func (m *AuthMiddleware) RequireRole(allowedRoles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole, exists := c.Get("userRole")
+		if !exists {
+			c.JSON(http.StatusForbidden, handler.ResponseInfo{
+				Error:  true,
+				Result: "Acesso negado: role não encontrado",
+			})
+			c.Abort()
+			return
+		}
+
+		roleStr, ok := userRole.(string)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, handler.ResponseInfo{
+				Error:  true,
+				Result: "Erro interno: role inválido",
+			})
+			c.Abort()
+			return
+		}
+
+		hasPermission := false
+		for _, allowedRole := range allowedRoles {
+			if roleStr == allowedRole {
+				hasPermission = true
+				break
+			}
+		}
+
+		if !hasPermission {
+			c.JSON(http.StatusForbidden, handler.ResponseInfo{
+				Error:  true,
+				Result: "Acesso negado: permissão insuficiente",
+			})
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}

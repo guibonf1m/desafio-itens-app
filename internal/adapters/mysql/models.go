@@ -10,8 +10,9 @@ import (
 type UserModel struct {
 	ID        int            `gorm:"primaryKey;autoIncrement"`
 	Username  string         `gorm:"uniqueIndex;size:50;not null"`
-	Email     string         `gorm:"uniqueIndex;not null"`
+	Email     string         `gorm:"uniqueIndex;size:255;not null"`
 	Password  string         `gorm:"size:255;not null"`
+	Role      string         `gorm:"type:enum('admin','user');default:'user';not null"`
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -27,6 +28,7 @@ func (m *UserModel) toEntity() userEntity.User {
 		Username:  m.Username,
 		Email:     m.Email,
 		Password:  m.Password,
+		Role:      userEntity.Role(m.Role),
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
@@ -38,6 +40,7 @@ func fromUserEntity(user userEntity.User) UserModel {
 		Username:  user.Username,
 		Email:     user.Email,
 		Password:  user.Password,
+		Role:      string(user.Role),
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
@@ -76,6 +79,8 @@ func (m *ItemModel) ToEntity() entity.Item {
 		Status:    entity.Status(m.Status),
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
+		CreatedBy: m.CreatedBy,
+		UpdateBy:  m.UpdatedBy,
 	}
 }
 
@@ -90,5 +95,7 @@ func FromEntity(item entity.Item) ItemModel {
 		Status:    string(item.Status),
 		CreatedAt: item.CreatedAt,
 		UpdatedAt: item.UpdatedAt,
+		CreatedBy: item.CreatedBy,
+		UpdatedBy: item.UpdateBy,
 	}
 }

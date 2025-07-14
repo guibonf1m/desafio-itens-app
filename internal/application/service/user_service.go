@@ -1,11 +1,14 @@
 package service
 
 import (
+	"context"
+	"desafio-itens-app/internal/adapters/http/dto"
 	"desafio-itens-app/internal/application/ports"
 	userDomain "desafio-itens-app/internal/domain/user"
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"math"
 	"strings"
 )
 
@@ -52,6 +55,44 @@ func (s *userService) GetUser(id int) (*userDomain.User, error) {
 	}
 
 	return s.repo.GetById(id)
+}
+
+func (s *userService) ListUsers(ctx context.Context, page, limit int) (*dto.ListUsersResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	users, total, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao listar usuários: %w", err)
+	}
+
+	userResponse := make([]dto.UserResponse, len(users))
+	for i, user := range users {
+		userResponse[i] = dto.UserResponse{
+			ID:        user.ID,
+			Username:  user.Username,
+			Email:     user.Email,
+			Role:      string(user.Role),
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		}
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	return &dto.ListUsersResponse{
+		Users:      userResponse,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}, nil
 }
 
 func (s *userService) GetUserByUsername(username string) (*userDomain.User, error) {
