@@ -228,6 +228,28 @@ func (h *ItemHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
+	// PASSO 6: VERIFICAR AUTORIZAÇÃO
+	userRole, exists := c.Get("userRole")
+	if !exists {
+		c.JSON(http.StatusForbidden, ResponseInfo{
+			Error:  true,
+			Result: "Role não encontrado",
+		})
+		return
+	}
+
+	roleStr := userRole.(string)
+
+	if roleStr != "admin" {
+		if existingItem.CreatedBy == nil || *existingItem.CreatedBy != userIDInt {
+			c.JSON(http.StatusForbidden, ResponseInfo{
+				Error:  true,
+				Result: "Você só pode editar itens que criou",
+			})
+			return
+		}
+	}
+
 	// PASSO 6: APLICAR mudanças e DEFINIR auditoria
 	updatedItem := *existingItem
 	req.ApplyTo(&updatedItem)         // ← Usando SEU método
