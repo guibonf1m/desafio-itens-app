@@ -3,7 +3,8 @@ package service
 import (
 	"context"
 	"desafio-itens-app/internal/adapters/http/dto"
-	"desafio-itens-app/internal/application/ports"
+	"desafio-itens-app/internal/application/ports/repositories"
+	"desafio-itens-app/internal/application/ports/services"
 	userDomain "desafio-itens-app/internal/domain/user"
 	"errors"
 	"fmt"
@@ -13,10 +14,10 @@ import (
 )
 
 type userService struct {
-	repo userDomain.UserRepository
+	repo repositories.UserRepository
 }
 
-func NewUserService(repo userDomain.UserRepository) ports.UserService {
+func NewUserService(repo repositories.UserRepository) services.UserService {
 	return &userService{repo: repo}
 }
 

@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"desafio-itens-app/internal/application/ports/repositories"
 	userDomain "desafio-itens-app/internal/domain/user"
 	"fmt"
 	"gorm.io/gorm"
@@ -11,7 +12,7 @@ type MySQLUserRepository struct {
 	db *gorm.DB
 }
 
-var _ userDomain.UserRepository = (*MySQLUserRepository)(nil)
+var _ repositories.UserRepository = (*MySQLUserRepository)(nil)
 
 func NewMySQLUserRepository(db *gorm.DB) *MySQLUserRepository {
 	return &MySQLUserRepository{db: db}

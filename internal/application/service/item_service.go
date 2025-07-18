@@ -1,17 +1,19 @@
 package service
 
 import (
+	"desafio-itens-app/internal/application/ports/repositories"
 	entity "desafio-itens-app/internal/domain/item" // Importa entidades do domínio
-	"errors"                                        // Para criar erros simples
-	"fmt"                                           // Para formatar erros
-	"math"                                          // Para cálculos (Ceil)
+	"desafio-itens-app/utils"
+	"errors" // Para criar erros simples
+	"fmt"    // Para formatar erros
+	"math"   // Para cálculos (Ceil)
 )
 
 type itemService struct { // Struct que implementa as regras de negócio
-	repo entity.ItemRepository // Dependência: interface do repositório
+	repo repositories.ItemRepository // Dependência: interface do repositório
 }
 
-func NewItemService(repo entity.ItemRepository) *itemService { // Factory: cria nova instância do service
+func NewItemService(repo repositories.ItemRepository) *itemService { // Factory: cria nova instância do service
 	return &itemService{ // Injeta dependência do repositório
 		repo: repo,
 	}
@@ -19,12 +21,8 @@ func NewItemService(repo entity.ItemRepository) *itemService { // Factory: cria 
 
 func (s *itemService) AddItem(item entity.Item) (entity.Item, error) {
 
-	if item.Preco <= 0 { // Valida preço positivo
-		return entity.Item{}, errors.New("O produto tem preço inválido.")
-	}
-
-	if item.Estoque < 0 { // Valida estoque não-negativo
-		return entity.Item{}, errors.New("O produto tem estoque inválido.")
+	if err := item.IsValid(); err != nil {
+		return entity.Item{}, err
 	}
 
 	if item.Estoque == 0 { // Regra: sem estoque = inativo
@@ -115,7 +113,7 @@ func (s *itemService) generateUniqueCode(nome string) (string, error) {
 	maxTentativas := 5
 
 	for tentativa := 0; tentativa < maxTentativas; tentativa++ {
-		code, err := entity.GenerateItemCode(nome)
+		code, err := utils.GenerateItemCode(nome)
 		if err != nil {
 			return "", err
 		}

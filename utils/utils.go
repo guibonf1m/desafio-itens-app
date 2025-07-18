@@ -1,4 +1,4 @@
-package item
+package utils
 
 import (
 	"crypto/rand" // Gera números seguros

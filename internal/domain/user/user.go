@@ -45,7 +45,3 @@ func (u *User) IsValid() error {
 
 	return nil
 }
-
-func (u *User) HasValidUsername() bool {
-	return len(u.Username) >= 3 && len(u.Username) <= 50
-}
