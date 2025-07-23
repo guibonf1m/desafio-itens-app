@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/crypto/bcrypt"
 	"testing"
 )
 
@@ -389,36 +390,167 @@ func TestUserService_UpdateUser_RepositoryError(t *testing.T) {
 }
 
 func TestUserService_DeleteUser_Success(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	mockRepo.On("Delete", 1).Return(nil)
+	service := NewUserService(mockRepo)
+
+	//ACT
+	err := service.DeleteUser(1)
+
+	//ASSERT
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_DeleteUser_InvalidID(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	service := NewUserService(mockRepo)
 
+	//ACT
+	err := service.DeleteUser(0)
+
+	//ASSERT
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ID deve ser maior que zero")
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_DeleteUser_RepositoryError(t *testing.T) {
 
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	mockRepo.On("Delete", 1).Return(errors.New("erro ao deletar usuário"))
+	service := NewUserService(mockRepo)
+
+	//ACT
+	err := service.DeleteUser(1)
+
+	//ASSERT
+	assert.Error(t, err)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_ValidateCredentials_Success(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+	expectedUser := &domain.User{
+		ID:       1,
+		Username: "testuser",
+		Email:    "test@email.com",
+		Password: string(hashedPassword),
+		Role:     domain.RoleUser,
+	}
+	mockRepo.On("GetByUsername", "testuser").Return(expectedUser, nil)
+	service := NewUserService(mockRepo)
 
+	//ACT
+	result, err := service.ValidateCredentials("testuser", "123456")
+
+	//ASSERT
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, expectedUser, result)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_ValidateCredentials_UserNotFound(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	mockRepo.On("GetByUsername", "testuser").Return((*domain.User)(nil), errors.New("usuário não encontrado"))
+	service := NewUserService(mockRepo)
 
+	//ACT
+	result, err := service.ValidateCredentials("testuser", "123456")
+
+	//ASSERT
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "credenciais inválidas")
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_ValidateCredentials_WrongPassword(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+	user := &domain.User{
+		ID:       1,
+		Username: "testuser",
+		Email:    "test@email.com",
+		Password: string(hashedPassword),
+		Role:     domain.RoleUser,
+	}
+	mockRepo.On("GetByUsername", "testuser").Return(user, nil)
+	service := NewUserService(mockRepo)
 
+	//ACT
+	result, err := service.ValidateCredentials("testuser", "wrongpassword")
+
+	//ASSERT
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "credenciais inválidas")
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_ListUsers_Success(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	users := []*domain.User{
+		{ID: 1, Username: "user1", Email: "user1@test.com", Role: domain.RoleUser},
+		{ID: 2, Username: "user2", Email: "user2@test.com", Role: domain.RoleAdmin},
+	}
+	mockRepo.On("List", mock.Anything, 10, 0).Return(users, int64(2), nil)
+	service := NewUserService(mockRepo)
 
+	//ACT
+	result, err := service.ListUsers(nil, 1, 10)
+
+	//ASSERT
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, result.Users, 2)
+	assert.Equal(t, int64(2), result.Total)
+	assert.Equal(t, 1, result.Page)
+	assert.Equal(t, 10, result.Limit)
+	assert.Equal(t, 1, result.TotalPages)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_ListUsers_DefaultPagination(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	users := []*domain.User{}
+	mockRepo.On("List", mock.Anything, 10, 0).Return(users, int64(0), nil)
+	service := NewUserService(mockRepo)
 
+	//ACT
+	result, err := service.ListUsers(nil, 0, 0)
+
+	//ASSERT
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, 1, result.Page)
+	assert.Equal(t, 10, result.Limit)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_ListUsers_RepositoryError(t *testing.T) {
+	//ARRANGE
+	mockRepo := mocks.NewUserRepository(t)
+	mockRepo.On("List", mock.Anything, 10, 0).Return([]*domain.User{}, int64(0), errors.New("erro ao listar usuários"))
 
+	service := NewUserService(mockRepo)
+
+	//ACT
+	result, err := service.ListUsers(nil, 1, 10)
+
+	//ASSERT
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "erro ao listar usuários")
+	mockRepo.AssertExpectations(t)
 }
