@@ -8,7 +8,7 @@ import (
 )
 
 func ConectarGORM() (*gorm.DB, error) {
-	dsn := "admin:admin@tcp(desafio-mysql:3306)/desafio_itens?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:root@tcp(localhost:3306)/meubanco?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})

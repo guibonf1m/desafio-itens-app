@@ -3,19 +3,19 @@ package handler
 import (
 	"desafio-itens-app/internal/adapters/http/auth"
 	"desafio-itens-app/internal/adapters/http/dto"
-	"desafio-itens-app/internal/application/ports"
+	"desafio-itens-app/internal/application/ports/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
 )
 
 type UserHandler struct {
-	service    ports.UserService // ← Dependência: UserService
+	service    services.UserService // ← Dependência: UserService
 	jwtService *auth.JWTService
 }
 
 // NewUserHandler - Factory function (cria instância do handler)
-func NewUserHandler(service ports.UserService, jwtService *auth.JWTService) *UserHandler {
+func NewUserHandler(service services.UserService, jwtService *auth.JWTService) *UserHandler {
 	return &UserHandler{
 		service:    service,
 		jwtService: jwtService, // ← Injetar dependência

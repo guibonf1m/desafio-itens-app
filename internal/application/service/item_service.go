@@ -21,14 +21,14 @@ func NewItemService(repo repositories.ItemRepository) *itemService { // Factory:
 
 func (s *itemService) AddItem(item entity.Item) (entity.Item, error) {
 
-	if err := item.IsValid(); err != nil {
-		return entity.Item{}, err
-	}
-
 	if item.Estoque == 0 { // Regra: sem estoque = inativo
 		item.Status = entity.StatusInativo
 	} else {
 		item.Status = entity.StatusAtivo // Com estoque = ativo
+	}
+
+	if err := item.IsValid(); err != nil {
+		return entity.Item{}, err
 	}
 
 	code, err := s.generateUniqueCode(item.Nome) // Gera código único
@@ -46,8 +46,12 @@ func (s *itemService) AddItem(item entity.Item) (entity.Item, error) {
 }
 
 func (s *itemService) GetItem(id int) (*entity.Item, error) {
-	if id <= 0 {
+	if id == 0 {
 		return nil, fmt.Errorf("O id não pode ser 0.")
+	}
+
+	if id < 0 {
+		return nil, fmt.Errorf("O id não pode ser negativo.")
 	}
 
 	item, err := s.repo.GetItem(id) // Busca no repositório
@@ -110,9 +114,10 @@ func (s *itemService) GetItensFiltradosPaginados(status *entity.Status, page, pa
 }
 
 func (s *itemService) generateUniqueCode(nome string) (string, error) {
-	maxTentativas := 5
 
-	for tentativa := 0; tentativa < maxTentativas; tentativa++ {
+	maxTentativas := 100 // Limite máximo de tentativas
+
+	for i := 0; i < maxTentativas; i++ {
 		code, err := utils.GenerateItemCode(nome)
 		if err != nil {
 			return "", err
@@ -123,7 +128,7 @@ func (s *itemService) generateUniqueCode(nome string) (string, error) {
 			return "", fmt.Errorf("erro ao verificar código: %w", err)
 		}
 
-		if !exists {
+		if exists == false {
 			return code, nil
 		}
 	}
@@ -166,6 +171,10 @@ func (s *itemService) UpdateItem(item entity.Item) error {
 		return fmt.Errorf("Estoque não pode ser negativo")
 	}
 
+	if item.ID <= 0 {
+		return fmt.Errorf("O id deve ser maior que zero")
+	}
+
 	// ✅ PASSO 2: Recalcular status baseado no estoque
 	if item.Estoque == 0 {
 		item.Status = entity.StatusInativo
@@ -183,13 +192,13 @@ func (s *itemService) UpdateItem(item entity.Item) error {
 
 func (s *itemService) DeleteItem(id int) error {
 	if id <= 0 { // Valida ID positivo
-		return fmt.Errorf("ID inválido para a exclusão: %d", id)
+		return fmt.Errorf("ID inválido para a exclusão %d", id)
 	}
 
 	err := s.repo.DeleteItem(id) // Deleta do banco
 
 	if err != nil { // ✅ CORRIGIDO: agora retorna erro
-		return fmt.Errorf("Erro ao deletar item: %w", err)
+		return fmt.Errorf("Erro ao deletar item %w", err)
 	}
 
 	return nil // Sucesso

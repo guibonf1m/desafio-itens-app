@@ -2,7 +2,7 @@ package handler
 
 import (
 	"desafio-itens-app/internal/adapters/http/dto"
-	"desafio-itens-app/internal/application/ports"
+	"desafio-itens-app/internal/application/ports/services"
 	entity "desafio-itens-app/internal/domain/item" // Domain entities
 	"fmt"
 	"github.com/gin-gonic/gin" // HTTP framework
@@ -25,10 +25,10 @@ type PageInfo struct {
 }
 
 type ItemHandler struct { // Handler para operações de Item
-	service ports.ItemService // Dependência: service layer
+	service services.ItemService // Dependência: service layer
 }
 
-func NewItemHandler(service ports.ItemService) *ItemHandler { // Factory function
+func NewItemHandler(service services.ItemService) *ItemHandler { // Factory function
 	return &ItemHandler{service: service} // Injeta dependência
 }
 
@@ -63,6 +63,7 @@ func (h *ItemHandler) AddItem(c *gin.Context) {
 	// PASSO 3: RECEBER e VALIDAR JSON
 	var req dto.CreateItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("erro: %v", err)
 		c.JSON(http.StatusBadRequest, ResponseInfo{
 			Error:  true,
 			Result: err.Error(),

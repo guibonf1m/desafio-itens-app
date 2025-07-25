@@ -33,7 +33,8 @@ func (i *Item) IsValid() error {
 	if i.Preco <= 0 {
 		return errors.New("Preço deve ser maior que zero")
 	}
-	if i.Estoque <= 0 {
+
+	if i.Estoque < 0 {
 		return errors.New("Estoque não pode ser negativo")
 	}
 
